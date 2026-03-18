@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import { rooms, players } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -22,6 +23,14 @@ export default async function HostLobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
+  // Derive base URL from the incoming request host so the QR code encodes
+  // the correct address — critical for dev where the host accesses via local
+  // IP (e.g. 192.168.x.x:3000) so the phone can reach the server.
+  const reqHeaders = await headers();
+  const host = reqHeaders.get("host") ?? "localhost:3000";
+  const proto = process.env.NODE_ENV === "production" ? "https" : "http";
+  const connectUrl = `${proto}://${host}/room/${upperCode}/connect?pid=${room.hostPlayerId ?? ""}`;
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
@@ -33,6 +42,7 @@ export default async function HostLobbyPage({ params }: Props) {
         hostPlayerId={room.hostPlayerId ?? ""}
         initialNumRounds={room.numRounds}
         initialScoringMode={room.scoringMode}
+        connectUrl={connectUrl}
       />
     </main>
   );

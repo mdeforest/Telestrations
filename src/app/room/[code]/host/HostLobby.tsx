@@ -17,6 +17,7 @@ interface Props {
   hostPlayerId: string;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
+  connectUrl: string;
 }
 
 export function HostLobby({
@@ -25,6 +26,7 @@ export function HostLobby({
   hostPlayerId,
   initialNumRounds,
   initialScoringMode,
+  connectUrl,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [numRounds, setNumRounds] = useState(initialNumRounds);
@@ -69,20 +71,13 @@ export function HostLobby({
     }
   }
 
-  const connectUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/room/${code}/connect?pid=${hostPlayerId}`
-      : "";
-
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
       {/* QR code for host to join on their phone */}
-      {connectUrl && (
-        <section className="flex flex-col items-center gap-2">
-          <QRCodeSVG value={connectUrl} size={160} />
-          <p className="text-xs text-gray-500">Scan to play on your phone</p>
-        </section>
-      )}
+      <section className="flex flex-col items-center gap-2">
+        <QRCodeSVG value={connectUrl} size={160} />
+        <p className="text-xs text-gray-500">Scan to play on your phone</p>
+      </section>
 
       {/* Live player list */}
       <section>
