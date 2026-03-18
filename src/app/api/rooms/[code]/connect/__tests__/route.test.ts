@@ -62,7 +62,7 @@ describe("GET /room/[code]/connect", () => {
     expect(res.status).toBe(404);
   });
 
-  it("sets playerId cookie and redirects to /room/[code] when valid", async () => {
+  it("sets playerId cookie and redirects to /room/[CODE] when valid", async () => {
     mocks.selectWhere
       .mockResolvedValueOnce([{ id: "room-1", code: "ABCDEF" }])
       .mockResolvedValueOnce([{ id: "player-1", roomId: "room-1" }]);
@@ -73,5 +73,14 @@ describe("GET /room/[code]/connect", () => {
       httpOnly: true,
       path: "/",
     });
+  });
+
+  it("normalises lowercase room code to uppercase in the redirect", async () => {
+    mocks.selectWhere
+      .mockResolvedValueOnce([{ id: "room-1", code: "ABCDEF" }])
+      .mockResolvedValueOnce([{ id: "player-1", roomId: "room-1" }]);
+    const res = await GET(makeReq("abcdef", "player-1"), makeParams("abcdef"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toMatch(/\/room\/ABCDEF/);
   });
 });
