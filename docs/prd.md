@@ -6,7 +6,7 @@ There is no good, freely accessible web version of Telestrations that supports t
 
 ## Solution
 
-Build a browser-based, internet-hosted Telestrations clone using Next.js and Supabase. Players join rooms via a 6-character code with no accounts required. The game supports 4–12 players with a host screen (TV/laptop) and player phones as separate UI surfaces. All game state is server-authoritative; Supabase Realtime propagates updates to all connected clients.
+Build a browser-based, internet-hosted Telestrations clone using Next.js, Neon (Postgres), and Ably (Realtime). Players join rooms via a 6-character code with no accounts required. The game supports 4–12 players with a host screen (TV/laptop) and player phones as separate UI surfaces. All game state is server-authoritative; Ably propagates updates to all connected clients.
 
 ## User Stories
 
@@ -91,14 +91,14 @@ Build a browser-based, internet-hosted Telestrations clone using Next.js and Sup
 50. As a host screen, I want to show the lobby player list and room code at large scale so that it is visible across the room.
 51. As a host screen, I want to show the active-round timer and pending-submission player list so that the room can watch progress.
 52. As a host screen, I want to display the reveal chain entries full-screen so that everyone watching can see drawings and guesses.
-53. As a host, I want the TV screen and my phone to stay in sync via Supabase Realtime so that neither gets out of date.
+53. As a host, I want the TV screen and my phone to stay in sync via Ably so that neither gets out of date.
 
 ### Realtime & State
 
 54. As a player, I want all game state changes (round advance, timer start, reveal progress) to propagate to my device within ~1 second so that the game feels live.
 55. As the game system, I want the timer to be server-authoritative (stored as `timer_started_at`) so that clients can't cheat by pausing local timers.
 56. As a player, I want my local countdown timer to be cosmetic only, derived from `timer_started_at` so that timer drift doesn't affect game outcomes.
-57. As the game system, I want all Supabase Realtime channels to be scoped to the room so that events from other rooms don't bleed through.
+57. As the game system, I want all Ably channels to be scoped to the room so that events from other rooms don't bleed through.
 
 ---
 
@@ -146,7 +146,7 @@ Build a browser-based, internet-hosted Telestrations clone using Next.js and Sup
 
 **8. Reveal Engine**
 - Tracks `reveal_book_index` and `reveal_entry_index` on the `rooms` row.
-- Host advances via a Supabase Realtime event (from TV or phone).
+- Host advances via an Ably channel event (from TV or phone).
 - Broadcasts reveal state; player phones highlight their own entry.
 
 **9. Voting & Scoring Module**
@@ -156,7 +156,7 @@ Build a browser-based, internet-hosted Telestrations clone using Next.js and Sup
 
 **10. Host Screen UI**
 - Separate route/page for the TV browser (`/room/[code]/host`).
-- Subscribes to the same Supabase Realtime channels as player phones.
+- Subscribes to the same Ably channels as player phones.
 - Shows large-format lobby, timer + pending list during active play, and cinematic reveal.
 
 ### Schema (as designed — no changes)
@@ -174,7 +174,7 @@ Tables: `rooms`, `players`, `rounds`, `books`, `entries`, `prompts`, `scores`, `
 - Submit vote: `POST /api/votes`
 - Override correctness: `PATCH /api/entries/[id]/override`
 
-### Realtime Events (Supabase Realtime channels, scoped per room)
+### Realtime Events (Ably channels, scoped per room)
 
 - `room:status` — status transitions
 - `room:players` — join/disconnect/seat updates
@@ -222,4 +222,4 @@ No UI or canvas tests in v1.
 - Seat order should be assigned at join time and remain stable; it drives all chain routing math.
 - The "host screen" route should be accessible by anyone in the room navigating to it (no separate host auth), but only the designated host player can trigger host actions.
 - Drawing JSON stored in the `content` column of `entries` should be validated for size limits on submission to prevent abuse.
-- Supabase free tier (200 concurrent connections, 2M messages/month) is sufficient for party-game scale and was a deliberate vendor choice.
+- Ably free tier (200 concurrent connections, 6M messages/month) and Neon free tier (unlimited projects, 0.5GB storage) together cover party-game scale and were deliberate vendor choices.

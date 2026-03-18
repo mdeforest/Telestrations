@@ -5,7 +5,9 @@ A browser-based multiplayer Telestrations party game. Players join via room code
 ## Stack
 
 - **Next.js** — framework
-- **Supabase** — database, auth, and realtime
+- **Neon** — serverless Postgres database
+- **Drizzle ORM** — TypeScript-first ORM and schema manager
+- **Ably** — realtime pub/sub
 - **Deployment** — internet-hosted (public URL, no LAN required)
 
 ## How It Works
