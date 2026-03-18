@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { rooms, players } from "@/lib/db/schema";
@@ -19,10 +19,7 @@ export default async function LobbyPage({ params }: Props) {
   const cookieStore = await cookies();
   const playerId = cookieStore.get("playerId")?.value;
 
-  // Host always uses the host screen
-  if (playerId && playerId === room.hostPlayerId) {
-    redirect(`/room/${upperCode}/host`);
-  }
+  const isHost = Boolean(playerId && playerId === room.hostPlayerId);
 
   const playerList = await db
     .select({ id: players.id, nickname: players.nickname, seatOrder: players.seatOrder })
@@ -41,6 +38,9 @@ export default async function LobbyPage({ params }: Props) {
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
+        isHost={isHost}
+        initialNumRounds={room.numRounds}
+        initialScoringMode={room.scoringMode}
       />
     </main>
   );

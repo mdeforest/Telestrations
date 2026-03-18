@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 
@@ -68,8 +69,21 @@ export function HostLobby({
     }
   }
 
+  const connectUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/room/${code}/connect?pid=${hostPlayerId}`
+      : "";
+
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
+      {/* QR code for host to join on their phone */}
+      {connectUrl && (
+        <section className="flex flex-col items-center gap-2">
+          <QRCodeSVG value={connectUrl} size={160} />
+          <p className="text-xs text-gray-500">Scan to play on your phone</p>
+        </section>
+      )}
+
       {/* Live player list */}
       <section>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-3">
