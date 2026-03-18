@@ -34,6 +34,7 @@ export function HostLobby({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phoneConnected, setPhoneConnected] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   const canStart = playerList.length >= 4;
 
@@ -78,13 +79,22 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
-      {/* QR code — always visible so the host can rescan; badge appears once connected */}
+      {/* QR code — opt-in so other players at the TV don't accidentally scan it */}
       <section className="flex flex-col items-center gap-2">
-        <QRCodeSVG value={connectUrl} size={160} />
         {phoneConnected ? (
           <p className="text-xs text-green-600 font-medium">✓ Phone connected</p>
+        ) : showQr ? (
+          <>
+            <QRCodeSVG value={connectUrl} size={160} />
+            <p className="text-xs text-gray-500">Scan to play on your phone</p>
+          </>
         ) : (
-          <p className="text-xs text-gray-500">Scan to play on your phone</p>
+          <button
+            onClick={() => setShowQr(true)}
+            className="text-sm text-blue-600 underline underline-offset-2"
+          >
+            Connect your phone
+          </button>
         )}
       </section>
 
