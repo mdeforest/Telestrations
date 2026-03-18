@@ -30,11 +30,19 @@ export default async function HostLobbyPage({ params }: Props) {
   const host = reqHeaders.get("host") ?? "localhost:3000";
   const proto = process.env.NODE_ENV === "production" ? "https" : "http";
   const connectUrl = `${proto}://${host}/room/${upperCode}/connect?pid=${room.hostPlayerId ?? ""}`;
+  const isLocalhost = host.startsWith("localhost") || host.startsWith("127.");
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
       <h1 className="text-8xl font-black tracking-widest mb-10">{upperCode}</h1>
+
+      {isLocalhost && (
+        <p className="mb-6 text-sm text-amber-600 text-center max-w-xs">
+          Open this page via your machine&apos;s local IP (e.g.{" "}
+          <span className="font-mono">192.168.x.x:3000</span>) so the QR code works on your phone.
+        </p>
+      )}
 
       <HostLobby
         code={upperCode}
