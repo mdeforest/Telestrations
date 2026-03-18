@@ -12,9 +12,11 @@ interface PromptOption {
 interface Props {
   code: string;
   roundId: string;
+  /** Called once the player has submitted (or was already submitted on load). */
+  onSelected?: () => void;
 }
 
-export function PromptSelectionScreen({ code, roundId }: Props) {
+export function PromptSelectionScreen({ code, roundId, onSelected }: Props) {
   const [options, setOptions] = useState<PromptOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(false);
@@ -28,6 +30,7 @@ export function PromptSelectionScreen({ code, roundId }: Props) {
       .then((data: { options: PromptOption[]; alreadySelected: boolean }) => {
         if (data.alreadySelected) {
           setSelected(true);
+          onSelected?.();
         } else {
           setOptions(data.options);
         }
@@ -37,7 +40,7 @@ export function PromptSelectionScreen({ code, roundId }: Props) {
         setError("Failed to load prompts");
         setLoading(false);
       });
-  }, [roundId]);
+  }, [roundId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to room status — navigate to game when all players selected
   useEffect(() => {
@@ -76,6 +79,7 @@ export function PromptSelectionScreen({ code, roundId }: Props) {
       }
 
       setSelected(true);
+      onSelected?.();
     } catch {
       setError("Network error");
       setSubmitting(false);

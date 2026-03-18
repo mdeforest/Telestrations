@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
+import { PromptSelectionScreen } from "../PromptSelectionScreen";
 
 interface Player {
   id: string;
@@ -19,6 +20,8 @@ interface Props {
   initialScoringMode: "friendly" | "competitive";
   initialStatus?: string;
   initialSelectedCount?: number;
+  initialRoundId?: string;
+  initialHostSelected?: boolean;
 }
 
 export function HostLobby({
@@ -29,6 +32,8 @@ export function HostLobby({
   initialScoringMode,
   initialStatus = "lobby",
   initialSelectedCount = 0,
+  initialRoundId,
+  initialHostSelected = false,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [numRounds, setNumRounds] = useState(initialNumRounds);
@@ -36,6 +41,8 @@ export function HostLobby({
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState(initialStatus);
+  const [roundId, setRoundId] = useState(initialRoundId ?? "");
+  const [hostSelected, setHostSelected] = useState(initialHostSelected);
 
   const canStart = playerList.length >= 4;
 
@@ -50,8 +57,12 @@ export function HostLobby({
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
     statusCh.subscribe("room-status-changed", (msg) => {
-      const { status: newStatus } = msg.data as { status: string };
+      const { status: newStatus, roundId: newRoundId } = msg.data as {
+        status: string;
+        roundId?: string;
+      };
       setStatus(newStatus);
+      if (newRoundId) setRoundId(newRoundId);
     });
 
     return () => {
@@ -79,6 +90,17 @@ export function HostLobby({
       setError("Network error");
       setStarting(false);
     }
+  }
+
+  // Host needs to pick their own prompt before watching the waiting screen
+  if (status === "prompts" && roundId && !hostSelected) {
+    return (
+      <PromptSelectionScreen
+        code={code}
+        roundId={roundId}
+        onSelected={() => setHostSelected(true)}
+      />
+    );
   }
 
   if (status === "prompts") {

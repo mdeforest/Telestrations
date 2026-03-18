@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { rooms, players, books, rounds } from "@/lib/db/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
@@ -15,6 +16,9 @@ export default async function HostLobbyPage({ params }: Props) {
   const [room] = await db.select().from(rooms).where(eq(rooms.code, upperCode));
   if (!room) notFound();
 
+  const cookieStore = await cookies();
+  const hostPlayerId = cookieStore.get("playerId")?.value ?? room.hostPlayerId ?? "";
+
   const playerList = await db
     .select({ id: players.id, nickname: players.nickname, seatOrder: players.seatOrder })
     .from(players)
@@ -22,8 +26,11 @@ export default async function HostLobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
-  // If already in prompts phase (e.g. host refreshed), load current selection count
+  // If already in prompts phase (e.g. host refreshed), load round + selection state
   let initialSelectedCount = 0;
+  let initialRoundId: string | undefined;
+  let initialHostSelected = false;
+
   if (room.status === "prompts") {
     const [firstRound] = await db
       .select({ id: rounds.id })
@@ -31,13 +38,27 @@ export default async function HostLobbyPage({ params }: Props) {
       .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
 
     if (firstRound) {
-      const [{ selected }] = await db
+      initialRoundId = firstRound.id;
+
+      const [counts] = await db
         .select({
-          selected: sql<number>`cast(count(*) filter (where ${books.originalPrompt} != '') as integer)`,
+          selected: sql<number>`cast(count(*) as integer)`,
         })
         .from(books)
         .where(and(eq(books.roundId, firstRound.id), ne(books.originalPrompt, "")));
-      initialSelectedCount = selected;
+      initialSelectedCount = counts.selected;
+
+      // Check whether the host specifically has selected
+      const [hostBook] = await db
+        .select({ originalPrompt: books.originalPrompt })
+        .from(books)
+        .where(
+          and(
+            eq(books.roundId, firstRound.id),
+            eq(books.ownerPlayerId, hostPlayerId)
+          )
+        );
+      initialHostSelected = !!hostBook && hostBook.originalPrompt !== "";
     }
   }
 
@@ -54,6 +75,8 @@ export default async function HostLobbyPage({ params }: Props) {
         initialScoringMode={room.scoringMode}
         initialStatus={room.status}
         initialSelectedCount={initialSelectedCount}
+        initialRoundId={initialRoundId}
+        initialHostSelected={initialHostSelected}
       />
     </main>
   );
