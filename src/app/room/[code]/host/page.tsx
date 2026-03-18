@@ -22,10 +22,7 @@ export default async function HostLobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
-  // If already in prompts phase (e.g. host refreshed), load round + selection state
   let initialSelectedCount = 0;
-  let initialRoundId: string | undefined;
-
   if (room.status === "prompts") {
     const [firstRound] = await db
       .select({ id: rounds.id })
@@ -33,12 +30,8 @@ export default async function HostLobbyPage({ params }: Props) {
       .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
 
     if (firstRound) {
-      initialRoundId = firstRound.id;
-
       const [counts] = await db
-        .select({
-          selected: sql<number>`cast(count(*) as integer)`,
-        })
+        .select({ selected: sql<number>`cast(count(*) as integer)` })
         .from(books)
         .where(and(eq(books.roundId, firstRound.id), ne(books.originalPrompt, "")));
       initialSelectedCount = counts.selected;
@@ -54,11 +47,8 @@ export default async function HostLobbyPage({ params }: Props) {
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
-        initialNumRounds={room.numRounds}
-        initialScoringMode={room.scoringMode}
         initialStatus={room.status}
         initialSelectedCount={initialSelectedCount}
-        initialRoundId={initialRoundId}
       />
     </main>
   );
