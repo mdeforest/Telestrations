@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
@@ -28,6 +29,21 @@ export function HostLobby({
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [status, setStatus] = useState(initialStatus);
+  const [phoneConnected, setPhoneConnected] = useState(false);
+  const [showQr, setShowQr] = useState(false);
+  const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
+
+  // Compute connect URL client-side so it reflects window.location (the real IP
+  // the browser used), not the Next.js server-side host which normalises to localhost.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUrlInfo({
+      connectUrl: `${window.location.origin}/room/${code}/connect?pid=${hostPlayerId}`,
+      isLocalhost:
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1",
+    });
+  }, [code, hostPlayerId]);
 
   useEffect(() => {
     const ably = getAblyClient();
@@ -36,6 +52,10 @@ export function HostLobby({
     playersCh.subscribe("players-updated", (msg) => {
       const { players } = msg.data as { players: Player[]; hostPlayerId: string };
       setPlayerList(players);
+    });
+
+    playersCh.subscribe("host-phone-connected", () => {
+      setPhoneConnected(true);
     });
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
@@ -74,6 +94,30 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
+      {/* QR code — opt-in so other players at the TV don't accidentally scan it */}
+      <section className="flex flex-col items-center gap-2">
+        {urlInfo.isLocalhost && (
+          <p className="text-xs text-amber-600 text-center">
+            Open this page via your local IP so the QR works on your phone.
+          </p>
+        )}
+        {showQr && urlInfo.connectUrl ? (
+          <>
+            <QRCodeSVG value={urlInfo.connectUrl} size={160} />
+            <p className={`text-xs font-medium ${phoneConnected ? "text-green-600" : "text-gray-500"}`}>
+              {phoneConnected ? "✓ Phone connected" : "Scan to play on your phone"}
+            </p>
+          </>
+        ) : (
+          <button
+            onClick={() => setShowQr(true)}
+            className="text-sm text-blue-600 underline underline-offset-2"
+          >
+            {phoneConnected ? "✓ Phone connected — scan again" : "Connect your phone"}
+          </button>
+        )}
+      </section>
+
       <section>
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-3">
           Players ({playerList.length})

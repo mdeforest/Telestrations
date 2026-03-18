@@ -15,7 +15,9 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
-  isHost?: boolean;
+  isHost: boolean;
+  initialNumRounds: number;
+  initialScoringMode: "friendly" | "competitive";
   initialStatus?: string;
   initialRoundId?: string;
 }
@@ -24,21 +26,26 @@ export function LobbyPlayerList({
   code,
   initialPlayers,
   hostPlayerId,
-  isHost = false,
+  isHost,
+  initialNumRounds,
+  initialScoringMode,
   initialStatus = "lobby",
   initialRoundId,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
+  const [numRounds, setNumRounds] = useState(initialNumRounds);
+  const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState(initialStatus);
   const [roundId, setRoundId] = useState(initialRoundId ?? "");
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+
+  const canStart = playerList.length >= 4;
 
   useEffect(() => {
     const ably = getAblyClient();
 
-    // Player list updates
     const playersCh = ably.channels.get(channels.roomPlayers(code));
     playersCh.subscribe("players-updated", (msg) => {
       const { players, hostPlayerId: newHostId } = msg.data as {
@@ -49,7 +56,6 @@ export function LobbyPlayerList({
       setCurrentHostId(newHostId);
     });
 
-    // Room status changes (lobby → prompts → active)
     const statusCh = ably.channels.get(channels.roomStatus(code));
     statusCh.subscribe("room-status-changed", (msg) => {
       const { status: newStatus, roundId: newRoundId } = msg.data as {
@@ -72,20 +78,20 @@ export function LobbyPlayerList({
 
   async function handleStart() {
     setStarting(true);
-    setStartError(null);
+    setError(null);
     try {
       const res = await fetch(`/api/rooms/${code}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numRounds: 3, scoringMode: "friendly" }),
+        body: JSON.stringify({ numRounds, scoringMode }),
       });
       if (!res.ok) {
         const data = await res.json();
-        setStartError(data.error ?? "Failed to start");
+        setError(data.error ?? "Failed to start game");
         setStarting(false);
       }
     } catch {
-      setStartError("Network error");
+      setError("Network error");
       setStarting(false);
     }
   }
@@ -103,10 +109,8 @@ export function LobbyPlayerList({
     );
   }
 
-  const canStart = playerList.length >= 4;
-
   return (
-    <div className="w-full max-w-xs flex flex-col gap-4">
+    <div className="w-full max-w-xs flex flex-col gap-6">
       <ul className="space-y-2">
         {playerList.map((p) => (
           <li
@@ -123,13 +127,56 @@ export function LobbyPlayerList({
       </ul>
 
       {isHost && (
-        <div className="flex flex-col gap-2">
-          {startError && <p className="text-sm text-red-600">{startError}</p>}
+        <section className="flex flex-col gap-4 border-t pt-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+            Host Controls
+          </h2>
+
           {!canStart && (
             <p className="text-sm text-amber-600">
-              Need at least 4 players ({4 - playerList.length} more)
+              Need at least 4 players to start ({4 - playerList.length} more)
             </p>
           )}
+
+          <div className="flex items-center justify-between">
+            <label htmlFor="rounds" className="font-medium">
+              Rounds
+            </label>
+            <select
+              id="rounds"
+              value={numRounds}
+              onChange={(e) => setNumRounds(Number(e.target.value))}
+              className="border rounded px-3 py-1.5 text-base bg-white"
+            >
+              {[3, 4, 5, 6, 7, 8].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="font-medium">Scoring</span>
+            <div className="flex rounded-lg border overflow-hidden text-sm">
+              {(["friendly", "competitive"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setScoringMode(mode)}
+                  className={`px-4 py-1.5 capitalize transition-colors ${
+                    scoringMode === mode
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
           <button
             onClick={handleStart}
             disabled={!canStart || starting}
@@ -137,7 +184,7 @@ export function LobbyPlayerList({
           >
             {starting ? "Starting…" : "Start Game"}
           </button>
-        </div>
+        </section>
       )}
     </div>
   );

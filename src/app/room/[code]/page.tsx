@@ -18,7 +18,7 @@ export default async function LobbyPage({ params }: Props) {
 
   const cookieStore = await cookies();
   const playerId = cookieStore.get("playerId")?.value;
-  const isHost = !!playerId && playerId === room.hostPlayerId;
+  const isHost = Boolean(playerId && playerId === room.hostPlayerId);
 
   const playerList = await db
     .select({ id: players.id, nickname: players.nickname, seatOrder: players.seatOrder })
@@ -27,7 +27,6 @@ export default async function LobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
-  // If the room is already in the prompts phase (e.g. player refreshed), fetch the round ID
   let initialRoundId: string | undefined;
   if (room.status === "prompts") {
     const [firstRound] = await db
@@ -58,6 +57,8 @@ export default async function LobbyPage({ params }: Props) {
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
         isHost={isHost}
+        initialNumRounds={room.numRounds}
+        initialScoringMode={room.scoringMode}
         initialStatus={room.status}
         initialRoundId={initialRoundId}
       />

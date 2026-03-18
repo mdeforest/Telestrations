@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #6 in review (PR #20, branch `feat/prompt-selection-issue-6`) — full prompt selection phase implemented: service (`createPromptService`), API routes (`GET /api/rounds/[id]/prompts`, `POST /api/rounds/[id]/prompt`), Ably events (start route publishes `{status:"prompts",roundId}`, prompt route publishes `{selectedCount,totalCount}` and `{status:"active"}`), player `PromptSelectionScreen` + host `HostPromptsWaiting` UI, `LobbyPlayerList`/`HostLobby` extended with `roomStatus` subscriptions, server pages handle refresh-safe initial state. 37 Vitest tests. Issue #5 (PR #17, chain router) and Issue #18 (host phone join) still open. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
+Issue #6 in progress (PR #20, branch `feat/prompt-selection-issue-6`) — full prompt selection phase + host phone join merged. Host creates room on their phone, starts game from phone; TV/laptop is display-only. QR code on host screen for phone connect. 43 Vitest tests. Issue #5 (PR #17, chain router) still open. Provision Neon + Ably and fill in `.env.local` before running.
 
 ## Stack
 
