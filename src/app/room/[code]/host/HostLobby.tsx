@@ -54,6 +54,14 @@ export function HostLobby({
     };
   }, [code]);
 
+  if (status === "active") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12">
+        <p className="text-xl font-bold">Game in progress</p>
+      </div>
+    );
+  }
+
   if (status === "prompts") {
     return (
       <HostPromptsWaiting

@@ -94,6 +94,15 @@ export function LobbyPlayerList({
     return <PromptSelectionScreen roundId={roundId} />;
   }
 
+  if (status === "active") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12">
+        <p className="text-xl font-bold">Game in progress</p>
+        <p className="text-gray-500 text-sm">Drawing phase coming soon.</p>
+      </div>
+    );
+  }
+
   const canStart = playerList.length >= 4;
 
   return (
