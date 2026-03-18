@@ -17,6 +17,13 @@ export class AlreadySelectedError extends Error {
   }
 }
 
+export class BookNotFoundError extends Error {
+  constructor(roundId: string, playerId: string) {
+    super(`No book found for player ${playerId} in round ${roundId}`);
+    this.name = "BookNotFoundError";
+  }
+}
+
 // ── Service factory ──────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +44,10 @@ export function createPromptService(db: any) {
       .where(
         and(eq(books.roundId, roundId), eq(books.ownerPlayerId, playerId))
       );
+
+    if (!book) {
+      throw new BookNotFoundError(roundId, playerId);
+    }
 
     // 2. Guard against double-selection
     if (book.originalPrompt !== "") {

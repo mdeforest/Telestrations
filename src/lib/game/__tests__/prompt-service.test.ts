@@ -3,6 +3,7 @@ import {
   createPromptService,
   PromptNotFoundError,
   AlreadySelectedError,
+  BookNotFoundError,
 } from "../prompt-service";
 
 // ── Mock helpers ────────────────────────────────────────────────────────────
@@ -136,6 +137,20 @@ describe("selectPrompt", () => {
     ).rejects.toThrow(AlreadySelectedError);
   });
 
+  it("throws BookNotFoundError when the player has no book in this round", async () => {
+    const db = {
+      select: makeSelectSequence([
+        [], // no book found
+      ]),
+      update: vi.fn(),
+    };
+
+    const service = createPromptService(db as never);
+    await expect(
+      service.selectPrompt(ROUND_ID, "unknown-player", PROMPT_ID)
+    ).rejects.toThrow(BookNotFoundError);
+  });
+
   it("throws PromptNotFoundError when the given promptId does not exist", async () => {
     const db = {
       select: makeSelectSequence([
@@ -173,6 +188,21 @@ describe("getPromptOptions", () => {
     expect(result.options).toHaveLength(3);
     const ids = result.options.map((o) => o.id);
     expect(new Set(ids).size).toBe(3);
+  });
+
+  it("returns all prompts when pool has fewer than 3", async () => {
+    const tinyPool = [{ id: "p-0", text: "Only option" }, { id: "p-1", text: "Second option" }];
+
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockResolvedValue(tinyPool),
+      }),
+    };
+
+    const service = createPromptService(db as never);
+    const { options } = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
+
+    expect(options).toHaveLength(2);
   });
 
   it("returns prompts with id and text fields", async () => {

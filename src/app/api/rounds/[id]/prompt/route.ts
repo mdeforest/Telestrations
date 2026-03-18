@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import {
   createPromptService,
   AlreadySelectedError,
+  BookNotFoundError,
   PromptNotFoundError,
 } from "@/lib/game/prompt-service";
 import { getAblyRest } from "@/lib/realtime/server";
@@ -70,6 +71,9 @@ export async function POST(
 
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof BookNotFoundError) {
+      return NextResponse.json({ error: "Player not found in this round" }, { status: 404 });
+    }
     if (err instanceof AlreadySelectedError) {
       return NextResponse.json({ error: "Prompt already selected" }, { status: 409 });
     }
