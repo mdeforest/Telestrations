@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Pre-implementation — design decisions documented in `docs/decisions.md`. No code written yet.
+Issue #2 complete — project scaffold implemented. Next.js 16 App Router + TypeScript initialized, Supabase client configured, all 8 DB tables in migration, prompts seeded, lint and typecheck pass. Supabase project provisioning and env vars still require manual setup (see `.env.local.example`).
 
 ## Stack
 
