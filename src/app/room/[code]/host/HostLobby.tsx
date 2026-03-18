@@ -17,7 +17,6 @@ interface Props {
   hostPlayerId: string;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
-  connectUrl: string;
 }
 
 export function HostLobby({
@@ -26,7 +25,6 @@ export function HostLobby({
   hostPlayerId,
   initialNumRounds,
   initialScoringMode,
-  connectUrl,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [numRounds, setNumRounds] = useState(initialNumRounds);
@@ -35,8 +33,23 @@ export function HostLobby({
   const [error, setError] = useState<string | null>(null);
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
 
   const canStart = playerList.length >= 4;
+
+  // Compute connect URL client-side so it reflects window.location (the real IP
+  // the browser used), not the Next.js server-side host which normalises to localhost.
+  useEffect(() => {
+    // window.location is only available client-side; this one-time read after
+    // mount is a legitimate use of setState in an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUrlInfo({
+      connectUrl: `${window.location.origin}/room/${code}/connect?pid=${hostPlayerId}`,
+      isLocalhost:
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1",
+    });
+  }, [code, hostPlayerId]);
 
   useEffect(() => {
     const ably = getAblyClient();
@@ -80,11 +93,16 @@ export function HostLobby({
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
       {/* QR code — opt-in so other players at the TV don't accidentally scan it.
-           phoneConnected only controls the label; showQr controls visibility. */}
+           connectUrl is empty until the client-side useEffect runs. */}
       <section className="flex flex-col items-center gap-2">
-        {showQr ? (
+        {urlInfo.isLocalhost && (
+          <p className="text-xs text-amber-600 text-center">
+            Open this page via your local IP so the QR works on your phone.
+          </p>
+        )}
+        {showQr && urlInfo.connectUrl ? (
           <>
-            <QRCodeSVG value={connectUrl} size={160} />
+            <QRCodeSVG value={urlInfo.connectUrl} size={160} />
             <p className={`text-xs font-medium ${phoneConnected ? "text-green-600" : "text-gray-500"}`}>
               {phoneConnected ? "✓ Phone connected" : "Scan to play on your phone"}
             </p>
