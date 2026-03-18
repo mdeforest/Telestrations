@@ -6,7 +6,9 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #6 in progress (PR #20, branch `feat/prompt-selection-issue-6`) — full prompt selection phase + host phone join merged. Host creates room on their phone, starts game from phone; TV/laptop is display-only. QR code on host screen for phone connect. 43 Vitest tests. Issue #5 (PR #17, chain router) still open. Provision Neon + Ably and fill in `.env.local` before running.
+Issue #7 in PR #21 (branch `feat/drawing-canvas-issue-7`) — DrawingCanvas component complete. Mouse + touch drawing, brush size control, stroke serialization, replay. 56 Vitest tests (8 for canvas, with @testing-library/react + jsdom). Issue #6 (PR #20) merged. Issue #5 (PR #17, chain router) still open. Provision Neon + Ably and fill in `.env.local` before running.
+
+**New testing deps added:** `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom` — needed for React component tests. `vitest.config.ts` now includes the React plugin. Per-file jsdom override: `// @vitest-environment jsdom`.
 
 ## Stack
 

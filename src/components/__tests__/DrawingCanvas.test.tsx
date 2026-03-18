@@ -1,9 +1,20 @@
 // @vitest-environment jsdom
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { DrawingCanvas, type Stroke } from "../DrawingCanvas";
 
 describe("DrawingCanvas", () => {
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    // jsdom doesn't implement canvas getContext — suppress the expected warning
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   it("renders a canvas element and a submit button", () => {
     render(<DrawingCanvas onSubmit={vi.fn()} />);
     expect(screen.getByRole("button", { name: /submit/i })).toBeTruthy();
@@ -80,6 +91,27 @@ describe("DrawingCanvas", () => {
     expect(strokes).toHaveLength(2);
     expect(strokes[0].points[0]).toEqual({ x: 0, y: 0 });
     expect(strokes[1].points[0]).toEqual({ x: 50, y: 50 });
+  });
+
+  it("serializes a touch draw sequence into a stroke with points", () => {
+    const onSubmit = vi.fn();
+    render(<DrawingCanvas onSubmit={onSubmit} />);
+    const canvas = document.querySelector("canvas")!;
+
+    fireEvent.touchStart(canvas, { touches: [{ clientX: 10, clientY: 20 }] });
+    fireEvent.touchMove(canvas, { touches: [{ clientX: 30, clientY: 40 }] });
+    fireEvent.touchMove(canvas, { touches: [{ clientX: 50, clientY: 60 }] });
+    fireEvent.touchEnd(canvas);
+
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+    const [strokes] = onSubmit.mock.calls[0];
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].points).toEqual([
+      { x: 10, y: 20 },
+      { x: 30, y: 40 },
+      { x: 50, y: 60 },
+    ]);
   });
 
   it("accepts replayStrokes prop and renders without error", () => {
