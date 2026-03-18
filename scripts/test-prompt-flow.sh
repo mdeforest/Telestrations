@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 # test-prompt-flow.sh
 #
-# Simulates 3 bot players + waits for you (the 4th) to join and select manually.
-#
-# Flow:
-#   1. Bots create room + join (Alice as host, Bob and Carol as players)
-#   2. Prints room code — you open the browser and join as the 4th player
-#   3. Press Enter — bots start the game
-#   4. Browser shows prompt selection; bots select their prompts after a short delay
-#   5. You select yours in the browser — room transitions to active
+# Interactive test harness: you are the host + 4th player.
+# Three bots join your room and select prompts on cue.
 #
 # Usage:
 #   ./scripts/test-prompt-flow.sh [BASE_URL]
@@ -17,75 +11,83 @@
 
 set -euo pipefail
 
-BASE="${1:-http://localhost:3000}"
-JARS=(/tmp/tele_p1.txt /tmp/tele_p2.txt /tmp/tele_p3.txt)
+BASE="${1:-http://192.168.86.35:3000}"
+JARS=(/tmp/tele_bot1.txt /tmp/tele_bot2.txt /tmp/tele_bot3.txt)
 NAMES=("Alice" "Bob" "Carol")
 
 cleanup() { rm -f "${JARS[@]}"; }
 trap cleanup EXIT
-
-# ── helpers ────────────────────────────────────────────────────────────────
 
 log()  { echo "▸ $*"; }
 ok()   { echo "  ✓ $*"; }
 fail() { echo "  ✗ $*" >&2; exit 1; }
 
 json_get() {
-  echo "$1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$2',''))"
+  echo "$1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$2') or '')"
 }
 
-# ── 1. Create room ──────────────────────────────────────────────────────────
+# ── Step 1: get room code from user ─────────────────────────────────────────
 
-log "Creating room as ${NAMES[0]} (host)…"
-CREATE=$(curl -sf -c "${JARS[0]}" -b "${JARS[0]}" \
-  -X POST "$BASE/api/rooms" \
-  -H "Content-Type: application/json" \
-  -d "{\"nickname\":\"${NAMES[0]}\"}")
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  1. Open $BASE in your browser"
+echo "  2. Create a room (you are the host)"
+echo "  3. Paste the room code below"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -r -p "  Room code: " CODE
+CODE="${CODE^^}"  # uppercase
+echo ""
 
-CODE=$(json_get "$CREATE" "code")
-[[ -n "$CODE" ]] || fail "No room code in response: $CREATE"
-ok "Room code: $CODE"
+# ── Step 2: bots join ────────────────────────────────────────────────────────
 
-# ── 2. Two more bots join ────────────────────────────────────────────────────
-
-for i in 1 2; do
+for i in 0 1 2; do
   log "Joining as ${NAMES[$i]}…"
   JOIN=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
     -X POST "$BASE/api/rooms/$CODE/join" \
     -H "Content-Type: application/json" \
     -d "{\"nickname\":\"${NAMES[$i]}\"}")
   SEAT=$(json_get "$JOIN" "seatOrder")
+  [[ -n "$SEAT" ]] || fail "Join failed for ${NAMES[$i]}: $JOIN"
   ok "${NAMES[$i]} joined (seat $SEAT)"
 done
 
-# ── 3. Wait for you ──────────────────────────────────────────────────────────
+# ── Step 3: wait for host to start ──────────────────────────────────────────
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Room code: $CODE"
-echo "  Open: $BASE/room/$CODE"
-echo "  Join as the 4th player in your browser, then press Enter."
+echo "  All 4 players are in the room."
+echo "  Start the game in your browser, then press Enter."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-read -r -p "  [Enter when you've joined] "
+read -r -p "  [Enter after you hit Start] "
 echo ""
 
-# ── 4. Start game ────────────────────────────────────────────────────────────
+# ── Step 4: poll for round ID ────────────────────────────────────────────────
 
-log "Starting game (as Alice)…"
-START=$(curl -sf -c "${JARS[0]}" -b "${JARS[0]}" \
-  -X POST "$BASE/api/rooms/$CODE/start" \
-  -H "Content-Type: application/json" \
-  -d '{"numRounds":3,"scoringMode":"friendly"}')
+log "Waiting for game to start…"
+ROUND_ID=""
+for attempt in $(seq 1 10); do
+  STATUS_RESP=$(curl -sf "$BASE/api/rooms/$CODE" || true)
+  STATUS=$(json_get "$STATUS_RESP" "status")
+  ROUND_ID=$(json_get "$STATUS_RESP" "roundId")
 
-ROUND_ID=$(json_get "$START" "roundId")
-[[ -n "$ROUND_ID" ]] || fail "No roundId in start response: $START"
-ok "Round started — ID: $ROUND_ID"
+  if [[ "$STATUS" == "prompts" && -n "$ROUND_ID" ]]; then
+    ok "Game started — Round ID: $ROUND_ID"
+    break
+  fi
 
-# ── 5. Bots select prompts after a short delay ───────────────────────────────
+  if [[ $attempt -eq 10 ]]; then
+    fail "Room is not in prompts phase after 10 attempts (status=$STATUS). Did you hit Start?"
+  fi
+
+  sleep 1
+done
+
+# ── Step 5: bots select prompts ─────────────────────────────────────────────
 
 echo ""
-echo "  Your browser should now show the prompt selection screen."
-echo "  Bots will select their prompts in 5 seconds…"
+echo "  Your browser should show the prompt selection screen."
+echo "  Bots will select in 5 seconds — pick yours before or after, up to you."
+echo ""
 sleep 5
 
 for i in 0 1 2; do
@@ -94,7 +96,7 @@ for i in 0 1 2; do
 
   ALREADY=$(json_get "$OPTS" "alreadySelected")
   if [[ "$ALREADY" == "True" || "$ALREADY" == "true" ]]; then
-    ok "${NAMES[$i]} already selected (skip)"
+    ok "${NAMES[$i]} already selected"
     continue
   fi
 
@@ -105,14 +107,13 @@ for i in 0 1 2; do
   PROMPT_TEXT=$(echo "$OPTS" | python3 -c \
     "import sys,json; opts=json.load(sys.stdin)['options']; print(opts[0]['text']) if opts else print('')")
 
-  SELECT=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
+  curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
     -X POST "$BASE/api/rounds/$ROUND_ID/prompt" \
     -H "Content-Type: application/json" \
-    -d "{\"promptId\":\"$PROMPT_ID\"}")
+    -d "{\"promptId\":\"$PROMPT_ID\"}" > /dev/null
 
   ok "${NAMES[$i]} selected: \"$PROMPT_TEXT\""
 done
 
 echo ""
-echo "  3 of 4 players have selected."
-echo "  Select your prompt in the browser to start the round."
+echo "  3 of 4 done. Select your prompt in the browser to kick off the round."
