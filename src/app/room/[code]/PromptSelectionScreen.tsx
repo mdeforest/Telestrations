@@ -21,12 +21,16 @@ export function PromptSelectionScreen({ code, roundId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch prompt options on mount
+  // Fetch prompt options on mount; skip to waiting screen if already selected
   useEffect(() => {
     fetch(`/api/rounds/${roundId}/prompts`)
       .then((r) => r.json())
-      .then((data: { options: PromptOption[] }) => {
-        setOptions(data.options);
+      .then((data: { options: PromptOption[]; alreadySelected: boolean }) => {
+        if (data.alreadySelected) {
+          setSelected(true);
+        } else {
+          setOptions(data.options);
+        }
         setLoading(false);
       })
       .catch(() => {

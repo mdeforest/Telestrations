@@ -187,6 +187,30 @@ describe("selectPrompt", () => {
   });
 });
 
+// ── getPromptOptions mock helper ────────────────────────────────────────────
+
+/**
+ * Builds a select mock for getPromptOptions.
+ * Call sequence inside the service:
+ *   1. select().from(books).where(...)  → player's book (check alreadySelected)
+ *   2. select().from(prompts)           → full prompts pool (no .where)
+ */
+function makeGetPromptOptionsMock(
+  bookResult: unknown[],
+  promptPool: unknown[]
+) {
+  let fromCallCount = 0;
+  return vi.fn().mockReturnValue({
+    from: vi.fn().mockImplementation(() => {
+      const call = fromCallCount++;
+      if (call === 0) {
+        return { where: vi.fn().mockResolvedValue(bookResult) };
+      }
+      return Promise.resolve(promptPool);
+    }),
+  });
+}
+
 // ── getPromptOptions tests ──────────────────────────────────────────────────
 
 describe("getPromptOptions", () => {
@@ -196,28 +220,19 @@ describe("getPromptOptions", () => {
       text: `Prompt ${i}`,
     }));
 
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockResolvedValue(promptPool),
-      }),
-    };
+    const db = { select: makeGetPromptOptionsMock([BOOK_UNSELECTED], promptPool) };
 
     const service = createPromptService(db as never);
     const result = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
 
     expect(result.options).toHaveLength(3);
-    const ids = result.options.map((o) => o.id);
-    expect(new Set(ids).size).toBe(3);
+    expect(new Set(result.options.map((o) => o.id)).size).toBe(3);
   });
 
   it("returns all prompts when pool has fewer than 3", async () => {
     const tinyPool = [{ id: "p-0", text: "Only option" }, { id: "p-1", text: "Second option" }];
 
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockResolvedValue(tinyPool),
-      }),
-    };
+    const db = { select: makeGetPromptOptionsMock([BOOK_UNSELECTED], tinyPool) };
 
     const service = createPromptService(db as never);
     const { options } = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
@@ -231,11 +246,7 @@ describe("getPromptOptions", () => {
       text: `Prompt ${i}`,
     }));
 
-    const db = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockResolvedValue(promptPool),
-      }),
-    };
+    const db = { select: makeGetPromptOptionsMock([BOOK_UNSELECTED], promptPool) };
 
     const service = createPromptService(db as never);
     const { options } = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
@@ -244,5 +255,23 @@ describe("getPromptOptions", () => {
       expect(opt).toHaveProperty("id");
       expect(opt).toHaveProperty("text");
     }
+  });
+
+  it("returns alreadySelected: false when player has not yet chosen", async () => {
+    const db = { select: makeGetPromptOptionsMock([BOOK_UNSELECTED], [PROMPT]) };
+
+    const service = createPromptService(db as never);
+    const result = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
+
+    expect(result.alreadySelected).toBe(false);
+  });
+
+  it("returns alreadySelected: true when player has already chosen a prompt", async () => {
+    const db = { select: makeGetPromptOptionsMock([BOOK_ALREADY_SELECTED], [PROMPT]) };
+
+    const service = createPromptService(db as never);
+    const result = await service.getPromptOptions(ROUND_ID, PLAYER_ID);
+
+    expect(result.alreadySelected).toBe(true);
   });
 });

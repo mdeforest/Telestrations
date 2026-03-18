@@ -95,19 +95,27 @@ export function createPromptService(db: any) {
   }
 
   /**
-   * Return 3 randomly sampled prompts for a player to choose from.
-   * The sample is re-randomised on each call; clients should cache
-   * the options until the player submits.
+   * Return 3 randomly sampled prompts for a player to choose from,
+   * plus an `alreadySelected` flag so the UI can skip straight to the
+   * waiting screen if the player refreshes after having already chosen.
    */
   async function getPromptOptions(
-    _roundId: string,
-    _playerId: string
-  ): Promise<{ options: Array<{ id: string; text: string }> }> {
+    roundId: string,
+    playerId: string
+  ): Promise<{ options: Array<{ id: string; text: string }>; alreadySelected: boolean }> {
+    // Check whether this player has already selected a prompt
+    const [book] = await db
+      .select()
+      .from(books)
+      .where(and(eq(books.roundId, roundId), eq(books.ownerPlayerId, playerId)));
+
+    const alreadySelected = !!book && book.originalPrompt !== "";
+
+    // Fetch the full prompt pool and sample 3 via partial Fisher-Yates
     const all = await db
       .select({ id: prompts.id, text: prompts.text })
       .from(prompts);
 
-    // Fisher-Yates partial shuffle: pick 3
     const pool = [...all];
     const count = Math.min(3, pool.length);
     for (let i = 0; i < count; i++) {
@@ -115,7 +123,7 @@ export function createPromptService(db: any) {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    return { options: pool.slice(0, count) };
+    return { options: pool.slice(0, count), alreadySelected };
   }
 
   return { selectPrompt, getPromptOptions };
