@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #5 in review (PR #17, branch `feat/chain-router-issue-5`) — chain router and game structure generation implemented. Issue #18 filed for host phone join (QR connect route + inline host controls). `chainRouter()` pure function in `src/lib/game/chain-router.ts` plus `chainLength()` and `entryType()` helpers. `startGame` now creates all rounds, books, and entries upfront with deterministic author assignment. 23 Vitest tests total (8 new for chainRouter, 4 new for startGame integration). Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
+Issue #6 in review (PR #20, branch `feat/prompt-selection-issue-6`) — prompt selection service and API routes implemented. `createPromptService(db)` factory in `src/lib/game/prompt-service.ts` with `selectPrompt` (records player's chosen prompt in `books.originalPrompt`, transitions room to `active` when all players selected) and `getPromptOptions` (returns 3 randomly sampled prompts). `GET /api/rounds/[id]/prompts` serves options; `POST /api/rounds/[id]/prompt` records selection. 37 Vitest tests total (7 new). Issue #5 (PR #17, chain router) and Issue #18 (host phone join) still open. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
 
 ## Stack
 
