@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import { players, rooms } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -38,5 +38,10 @@ export async function GET(
     .channels.get(channels.roomPlayers(upperCode))
     .publish("host-phone-connected", null);
 
-  return NextResponse.redirect(new URL(`/room/${upperCode}`, req.url));
+  // Use the Host header from the request for the redirect origin — req.url is
+  // normalised to localhost by Next.js even when the phone hit the LAN IP.
+  const reqHeaders = await headers();
+  const host = reqHeaders.get("host") ?? "localhost:3000";
+  const proto = process.env.NODE_ENV === "production" ? "https" : "http";
+  return NextResponse.redirect(`${proto}://${host}/room/${upperCode}`);
 }

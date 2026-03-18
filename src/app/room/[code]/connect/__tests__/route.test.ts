@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/headers", () => ({
   cookies: () => Promise.resolve({ set: mocks.cookieSet }),
+  headers: () => Promise.resolve(new Headers({ host: "localhost:3000" })),
 }));
 
 vi.mock("@/lib/db", () => ({
