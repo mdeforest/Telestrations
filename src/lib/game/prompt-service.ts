@@ -86,7 +86,7 @@ export function createPromptService(db: any) {
 
       await db
         .update(rooms)
-        .set({ status: "active" })
+        .set({ status: "active", currentRound: round.roundNumber })
         .where(eq(rooms.id, round.roomId))
         .returning();
     }

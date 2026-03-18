@@ -60,7 +60,7 @@ const BOOK_ALREADY_SELECTED = {
   originalPrompt: "Already chosen",
 };
 
-const ROUND_ROW = { id: ROUND_ID, roomId: ROOM_ID };
+const ROUND_ROW = { id: ROUND_ID, roomId: ROOM_ID, roundNumber: 1 };
 const PROMPT = { id: PROMPT_ID, text: "A sleeping cat" };
 
 // ── selectPrompt tests ──────────────────────────────────────────────────────
@@ -135,6 +135,26 @@ describe("selectPrompt", () => {
     await expect(
       service.selectPrompt(ROUND_ID, PLAYER_ID, PROMPT_ID)
     ).rejects.toThrow(AlreadySelectedError);
+  });
+
+  it("sets currentRound on the room when transitioning to active", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [BOOK_UNSELECTED],
+        [PROMPT],
+        [{ count: 0 }],
+        [ROUND_ROW], // roundNumber: 1
+      ]),
+      update: updateMock,
+    };
+
+    const service = createPromptService(db as never);
+    await service.selectPrompt(ROUND_ID, PLAYER_ID, PROMPT_ID);
+
+    // Second update (room) must include both status and currentRound
+    expect(setCalls[1]).toMatchObject({ status: "active", currentRound: 1 });
   });
 
   it("throws BookNotFoundError when the player has no book in this round", async () => {
