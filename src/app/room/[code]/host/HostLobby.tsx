@@ -79,12 +79,18 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
+      {/* DEBUG — remove before merge */}
+      <pre className="text-xs bg-gray-100 p-2 rounded break-all">
+        showQr={String(showQr)} phoneConnected={String(phoneConnected)}{"\n"}
+        connectUrl={connectUrl || "(empty)"}
+      </pre>
+
       {/* QR code — opt-in so other players at the TV don't accidentally scan it.
            phoneConnected only controls the label; showQr controls visibility. */}
       <section className="flex flex-col items-center gap-2">
         {showQr ? (
           <>
-            <QRCodeSVG value={connectUrl} size={160} />
+            <QRCodeSVG value={connectUrl || "https://example.com"} size={160} />
             <p className={`text-xs font-medium ${phoneConnected ? "text-green-600" : "text-gray-500"}`}>
               {phoneConnected ? "✓ Phone connected" : "Scan to play on your phone"}
             </p>
