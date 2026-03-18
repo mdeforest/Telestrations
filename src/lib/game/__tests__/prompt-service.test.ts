@@ -274,4 +274,15 @@ describe("getPromptOptions", () => {
 
     expect(result.alreadySelected).toBe(true);
   });
+
+  it("returns alreadySelected: false and still returns options when player has no book", async () => {
+    const promptPool = [PROMPT, { id: "p-2", text: "Another" }, { id: "p-3", text: "Third" }];
+    const db = { select: makeGetPromptOptionsMock([], promptPool) }; // no book found
+
+    const service = createPromptService(db as never);
+    const result = await service.getPromptOptions(ROUND_ID, "unknown-player");
+
+    expect(result.alreadySelected).toBe(false);
+    expect(result.options).toHaveLength(3);
+  });
 });

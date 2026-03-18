@@ -61,6 +61,10 @@ export function HostLobby({
         status: string;
         roundId?: string;
       };
+      if (newStatus === "active") {
+        window.location.reload();
+        return;
+      }
       setStatus(newStatus);
       if (newRoundId) setRoundId(newRoundId);
     });
