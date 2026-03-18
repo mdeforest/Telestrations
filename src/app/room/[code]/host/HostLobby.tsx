@@ -33,6 +33,7 @@ export function HostLobby({
   const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneConnected, setPhoneConnected] = useState(false);
 
   const canStart = playerList.length >= 4;
 
@@ -43,6 +44,10 @@ export function HostLobby({
     channel.subscribe("players-updated", (msg) => {
       const { players } = msg.data as { players: Player[]; hostPlayerId: string };
       setPlayerList(players);
+    });
+
+    channel.subscribe("host-phone-connected", () => {
+      setPhoneConnected(true);
     });
 
     return () => {
@@ -73,11 +78,13 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
-      {/* QR code for host to join on their phone */}
-      <section className="flex flex-col items-center gap-2">
-        <QRCodeSVG value={connectUrl} size={160} />
-        <p className="text-xs text-gray-500">Scan to play on your phone</p>
-      </section>
+      {/* QR code — hidden once the phone has connected */}
+      {!phoneConnected && (
+        <section className="flex flex-col items-center gap-2">
+          <QRCodeSVG value={connectUrl} size={160} />
+          <p className="text-xs text-gray-500">Scan to play on your phone</p>
+        </section>
+      )}
 
       {/* Live player list */}
       <section>

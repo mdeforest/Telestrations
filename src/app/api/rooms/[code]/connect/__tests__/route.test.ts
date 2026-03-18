@@ -6,6 +6,7 @@ import { NextRequest } from "next/server";
 const mocks = vi.hoisted(() => ({
   cookieSet: vi.fn(),
   selectWhere: vi.fn(),
+  ablyPublish: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("next/headers", () => ({
@@ -20,6 +21,14 @@ vi.mock("@/lib/db", () => ({
       }),
     }),
   },
+}));
+
+vi.mock("@/lib/realtime/server", () => ({
+  getAblyRest: () => ({
+    channels: {
+      get: () => ({ publish: mocks.ablyPublish }),
+    },
+  }),
 }));
 
 // Import AFTER mocks are declared
@@ -54,15 +63,23 @@ describe("GET /room/[code]/connect", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns 404 when player does not belong to the room", async () => {
+  it("returns 404 when player does not exist", async () => {
     mocks.selectWhere
       .mockResolvedValueOnce([{ id: "room-1", code: "ABCDEF" }]) // room found
-      .mockResolvedValueOnce([]); // player not in this room
+      .mockResolvedValueOnce([]); // player lookup returns empty
     const res = await GET(makeReq("ABCDEF", "other-player"), makeParams("ABCDEF"));
     expect(res.status).toBe(404);
   });
 
-  it("sets playerId cookie and redirects to /room/[CODE] when valid", async () => {
+  it("returns 404 when player exists but belongs to a different room", async () => {
+    mocks.selectWhere
+      .mockResolvedValueOnce([{ id: "room-1", code: "ABCDEF" }])
+      .mockResolvedValueOnce([{ id: "player-1", roomId: "room-DIFFERENT" }]);
+    const res = await GET(makeReq("ABCDEF", "player-1"), makeParams("ABCDEF"));
+    expect(res.status).toBe(404);
+  });
+
+  it("sets playerId cookie, publishes Ably event, and redirects to /room/[CODE] when valid", async () => {
     mocks.selectWhere
       .mockResolvedValueOnce([{ id: "room-1", code: "ABCDEF" }])
       .mockResolvedValueOnce([{ id: "player-1", roomId: "room-1" }]);
@@ -73,6 +90,7 @@ describe("GET /room/[code]/connect", () => {
       httpOnly: true,
       path: "/",
     });
+    expect(mocks.ablyPublish).toHaveBeenCalledWith("host-phone-connected", null);
   });
 
   it("normalises lowercase room code to uppercase in the redirect", async () => {
