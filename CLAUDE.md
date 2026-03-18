@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #2 complete — project scaffold implemented. Next.js 16 App Router + TypeScript, Neon + Drizzle ORM (all 8 tables, generated migration), Ably realtime (channels + token endpoint), prompts seeded. Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
+Issue #3 in review (PR #15) — room creation and joining implemented. `RoomService` with TDD (5 Vitest tests), `POST /api/rooms`, `POST /api/rooms/[code]/join`, and `/room/[code]` lobby page. Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
 
 ## Stack
 
