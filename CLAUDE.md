@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #3 in review (PR #15) — room creation and joining implemented. `RoomService` with TDD (5 Vitest tests), `POST /api/rooms`, `POST /api/rooms/[code]/join`, and `/room/[code]` lobby page. Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
+Issue #5 in review (PR #17, branch `feat/chain-router-issue-5`) — chain router and game structure generation implemented. `chainRouter()` pure function in `src/lib/game/chain-router.ts` plus `chainLength()` and `entryType()` helpers. `startGame` now creates all rounds, books, and entries upfront with deterministic author assignment. 23 Vitest tests total (8 new for chainRouter, 4 new for startGame integration). Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
 
 ## Stack
 
