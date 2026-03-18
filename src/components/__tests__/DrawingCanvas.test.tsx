@@ -114,6 +114,29 @@ describe("DrawingCanvas", () => {
     ]);
   });
 
+  it("handles touchcancel by discarding the in-progress stroke so subsequent strokes work", () => {
+    const onSubmit = vi.fn();
+    render(<DrawingCanvas onSubmit={onSubmit} />);
+    const canvas = document.querySelector("canvas")!;
+
+    // Start a stroke but cancel it (e.g. phone call interruption)
+    fireEvent.touchStart(canvas, { touches: [{ clientX: 10, clientY: 10 }] });
+    fireEvent.touchMove(canvas, { touches: [{ clientX: 20, clientY: 20 }] });
+    fireEvent.touchCancel(canvas);
+
+    // Draw a normal stroke after the cancel
+    fireEvent.touchStart(canvas, { touches: [{ clientX: 50, clientY: 50 }] });
+    fireEvent.touchMove(canvas, { touches: [{ clientX: 60, clientY: 60 }] });
+    fireEvent.touchEnd(canvas);
+
+    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+
+    const [strokes] = onSubmit.mock.calls[0];
+    // The cancelled stroke should not appear; only the valid one should
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].points[0]).toEqual({ x: 50, y: 50 });
+  });
+
   it("accepts replayStrokes prop and renders without error", () => {
     const replay: Stroke[] = [
       { points: [{ x: 0, y: 0 }, { x: 100, y: 100 }], brushSize: 4 },
