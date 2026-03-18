@@ -59,15 +59,50 @@ describe("chainRouter", () => {
 
     it("every (ownerSeat, passNumber) pair maps to a unique seat within a round for N=5", () => {
       const N = 5;
-      const chainLength = N - 1;
+      const len = N - 1;
       for (let owner = 0; owner < N; owner++) {
-        const authorSeats = Array.from({ length: chainLength }, (_, i) =>
+        const authorSeats = Array.from({ length: len }, (_, i) =>
           chainRouter(owner, i + 1, N)
         );
         // Each non-owner seat appears exactly once per book
-        expect(new Set(authorSeats).size).toBe(chainLength);
+        expect(new Set(authorSeats).size).toBe(len);
         // Owner never appears in their own chain (odd N)
         expect(authorSeats).not.toContain(owner);
+      }
+    });
+
+    it("each player authors exactly one entry per pass (simultaneous play invariant) for N=4", () => {
+      const N = 4;
+      for (let pass = 1; pass <= N; pass++) {
+        const authors = Array.from({ length: N }, (_, owner) =>
+          chainRouter(owner, pass, N)
+        );
+        // Every seat appears exactly once across all books for this pass
+        expect(new Set(authors).size).toBe(N);
+      }
+    });
+
+    it("each player authors exactly one entry per pass (simultaneous play invariant) for N=5", () => {
+      const N = 5;
+      const len = N - 1;
+      for (let pass = 1; pass <= len; pass++) {
+        const authors = Array.from({ length: N }, (_, owner) =>
+          chainRouter(owner, pass, N)
+        );
+        // Every seat appears exactly once across all books for this pass
+        expect(new Set(authors).size).toBe(N);
+      }
+    });
+
+    it("simultaneous play invariant holds for all player counts 4–12", () => {
+      for (let N = 4; N <= 12; N++) {
+        const len = chainLength(N);
+        for (let pass = 1; pass <= len; pass++) {
+          const authors = Array.from({ length: N }, (_, owner) =>
+            chainRouter(owner, pass, N)
+          );
+          expect(new Set(authors).size).toBe(N);
+        }
       }
     });
 
