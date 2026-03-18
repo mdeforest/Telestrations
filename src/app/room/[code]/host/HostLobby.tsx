@@ -78,13 +78,15 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
-      {/* QR code — hidden once the phone has connected */}
-      {!phoneConnected && (
-        <section className="flex flex-col items-center gap-2">
-          <QRCodeSVG value={connectUrl} size={160} />
+      {/* QR code — always visible so the host can rescan; badge appears once connected */}
+      <section className="flex flex-col items-center gap-2">
+        <QRCodeSVG value={connectUrl} size={160} />
+        {phoneConnected ? (
+          <p className="text-xs text-green-600 font-medium">✓ Phone connected</p>
+        ) : (
           <p className="text-xs text-gray-500">Scan to play on your phone</p>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* Live player list */}
       <section>
