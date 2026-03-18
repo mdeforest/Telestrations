@@ -17,6 +17,27 @@ export class DuplicateNicknameError extends Error {
   }
 }
 
+export class NotHostError extends Error {
+  constructor() {
+    super("Only the host can start the game");
+    this.name = "NotHostError";
+  }
+}
+
+export class InsufficientPlayersError extends Error {
+  constructor(count: number) {
+    super(`Need at least 4 players to start; currently ${count}`);
+    this.name = "InsufficientPlayersError";
+  }
+}
+
+export class InvalidConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidConfigError";
+  }
+}
+
 // ── Code generation ──────────────────────────────────────────────────────────
 
 // Unambiguous uppercase alpha chars (no 0/O/1/I/l)
@@ -94,5 +115,45 @@ export function createRoomService(db: any) {
     return { playerId: player.id, seatOrder: player.seatOrder };
   }
 
-  return { createRoom, joinRoom };
+  async function startGame(
+    code: string,
+    hostPlayerId: string,
+    config: { numRounds: number; scoringMode: "friendly" | "competitive" }
+  ): Promise<{ id: string; code: string; status: string }> {
+    if (config.numRounds < 3 || config.numRounds > 8) {
+      throw new InvalidConfigError("numRounds must be between 3 and 8");
+    }
+
+    const [room] = await db
+      .select()
+      .from(rooms)
+      .where(eq(rooms.code, code));
+
+    if (!room) {
+      throw new RoomNotFoundError(code);
+    }
+
+    if (room.hostPlayerId !== hostPlayerId) {
+      throw new NotHostError();
+    }
+
+    const roomPlayers = await db
+      .select()
+      .from(players)
+      .where(eq(players.roomId, room.id));
+
+    if (roomPlayers.length < 4) {
+      throw new InsufficientPlayersError(roomPlayers.length);
+    }
+
+    const [updated] = await db
+      .update(rooms)
+      .set({ status: "prompts", numRounds: config.numRounds, scoringMode: config.scoringMode })
+      .where(eq(rooms.id, room.id))
+      .returning();
+
+    return { id: updated.id, code: updated.code, status: updated.status };
+  }
+
+  return { createRoom, joinRoom, startGame };
 }

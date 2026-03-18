@@ -1,28 +1,19 @@
-import { notFound, redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { rooms, players } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { LobbyPlayerList } from "./LobbyPlayerList";
+import { HostLobby } from "./HostLobby";
 
 interface Props {
   params: Promise<{ code: string }>;
 }
 
-export default async function LobbyPage({ params }: Props) {
+export default async function HostLobbyPage({ params }: Props) {
   const { code } = await params;
   const upperCode = code.toUpperCase();
 
   const [room] = await db.select().from(rooms).where(eq(rooms.code, upperCode));
   if (!room) notFound();
-
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
-
-  // Host always uses the host screen
-  if (playerId && playerId === room.hostPlayerId) {
-    redirect(`/room/${upperCode}/host`);
-  }
 
   const playerList = await db
     .select({ id: players.id, nickname: players.nickname, seatOrder: players.seatOrder })
@@ -34,13 +25,14 @@ export default async function LobbyPage({ params }: Props) {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
-      <h1 className="text-6xl font-black tracking-widest mb-8">{upperCode}</h1>
-      <p className="text-gray-500 mb-6">Waiting for players…</p>
+      <h1 className="text-8xl font-black tracking-widest mb-10">{upperCode}</h1>
 
-      <LobbyPlayerList
+      <HostLobby
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
+        initialNumRounds={room.numRounds}
+        initialScoringMode={room.scoringMode}
       />
     </main>
   );

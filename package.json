@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:reset": "node scripts/db-reset.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
