@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
+import { PromptSelectionScreen } from "./PromptSelectionScreen";
 
 interface Player {
   id: string;
@@ -14,17 +15,28 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
+  initialStatus?: string;
+  initialRoundId?: string;
 }
 
-export function LobbyPlayerList({ code, initialPlayers, hostPlayerId }: Props) {
+export function LobbyPlayerList({
+  code,
+  initialPlayers,
+  hostPlayerId,
+  initialStatus = "lobby",
+  initialRoundId,
+}: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
+  const [status, setStatus] = useState(initialStatus);
+  const [roundId, setRoundId] = useState(initialRoundId ?? "");
 
   useEffect(() => {
     const ably = getAblyClient();
-    const channel = ably.channels.get(channels.roomPlayers(code));
 
-    channel.subscribe("players-updated", (msg) => {
+    // Player list updates
+    const playersCh = ably.channels.get(channels.roomPlayers(code));
+    playersCh.subscribe("players-updated", (msg) => {
       const { players, hostPlayerId: newHostId } = msg.data as {
         players: Player[];
         hostPlayerId: string;
@@ -33,10 +45,26 @@ export function LobbyPlayerList({ code, initialPlayers, hostPlayerId }: Props) {
       setCurrentHostId(newHostId);
     });
 
+    // Room status changes (lobby → prompts → active)
+    const statusCh = ably.channels.get(channels.roomStatus(code));
+    statusCh.subscribe("room-status-changed", (msg) => {
+      const { status: newStatus, roundId: newRoundId } = msg.data as {
+        status: string;
+        roundId?: string;
+      };
+      setStatus(newStatus);
+      if (newRoundId) setRoundId(newRoundId);
+    });
+
     return () => {
-      channel.unsubscribe();
+      playersCh.unsubscribe();
+      statusCh.unsubscribe();
     };
   }, [code]);
+
+  if (status === "prompts" && roundId) {
+    return <PromptSelectionScreen code={code} roundId={roundId} />;
+  }
 
   return (
     <ul className="w-full max-w-xs space-y-2">

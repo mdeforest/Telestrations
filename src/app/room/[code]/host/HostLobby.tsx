@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
+import { HostPromptsWaiting } from "./HostPromptsWaiting";
 
 interface Player {
   id: string;
@@ -16,6 +17,8 @@ interface Props {
   hostPlayerId: string;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
+  initialStatus?: string;
+  initialSelectedCount?: number;
 }
 
 export function HostLobby({
@@ -24,26 +27,36 @@ export function HostLobby({
   hostPlayerId,
   initialNumRounds,
   initialScoringMode,
+  initialStatus = "lobby",
+  initialSelectedCount = 0,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [numRounds, setNumRounds] = useState(initialNumRounds);
   const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState(initialStatus);
 
   const canStart = playerList.length >= 4;
 
   useEffect(() => {
     const ably = getAblyClient();
-    const channel = ably.channels.get(channels.roomPlayers(code));
 
-    channel.subscribe("players-updated", (msg) => {
+    const playersCh = ably.channels.get(channels.roomPlayers(code));
+    playersCh.subscribe("players-updated", (msg) => {
       const { players } = msg.data as { players: Player[]; hostPlayerId: string };
       setPlayerList(players);
     });
 
+    const statusCh = ably.channels.get(channels.roomStatus(code));
+    statusCh.subscribe("room-status-changed", (msg) => {
+      const { status: newStatus } = msg.data as { status: string };
+      setStatus(newStatus);
+    });
+
     return () => {
-      channel.unsubscribe();
+      playersCh.unsubscribe();
+      statusCh.unsubscribe();
     };
   }, [code]);
 
@@ -61,11 +74,21 @@ export function HostLobby({
         setError(data.error ?? "Failed to start game");
         setStarting(false);
       }
-      // On success the server will transition the room — realtime event will drive navigation
+      // On success the Ably event drives the status transition
     } catch {
       setError("Network error");
       setStarting(false);
     }
+  }
+
+  if (status === "prompts") {
+    return (
+      <HostPromptsWaiting
+        code={code}
+        totalPlayers={playerList.length}
+        initialSelectedCount={initialSelectedCount}
+      />
+    );
   }
 
   return (

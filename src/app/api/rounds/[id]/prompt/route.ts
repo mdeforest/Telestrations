@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { books, rounds, rooms } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
 import {
   createPromptService,
   AlreadySelectedError,
   PromptNotFoundError,
 } from "@/lib/game/prompt-service";
+import { getAblyRest } from "@/lib/realtime/server";
+import { channels } from "@/lib/realtime/channels";
 
 export async function POST(
   req: NextRequest,
@@ -30,6 +34,40 @@ export async function POST(
 
   try {
     const result = await service.selectPrompt(roundId, playerId, promptId);
+
+    // Fetch room code for Ably channel routing
+    const [roundInfo] = await db
+      .select({ code: rooms.code })
+      .from(rounds)
+      .innerJoin(rooms, eq(rounds.roomId, rooms.id))
+      .where(eq(rounds.id, roundId));
+
+    if (roundInfo) {
+      // Count selected vs total for the host display
+      const [counts] = await db
+        .select({
+          total: sql<number>`cast(count(*) as integer)`,
+          selected: sql<number>`cast(count(*) filter (where original_prompt != '') as integer)`,
+        })
+        .from(books)
+        .where(eq(books.roundId, roundId));
+
+      const ably = getAblyRest();
+
+      await ably.channels
+        .get(channels.roomPrompts(roundInfo.code))
+        .publish("prompt-selected", {
+          selectedCount: counts.selected,
+          totalCount: counts.total,
+        });
+
+      if (result.allSelected) {
+        await ably.channels
+          .get(channels.roomStatus(roundInfo.code))
+          .publish("room-status-changed", { status: "active" });
+      }
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof AlreadySelectedError) {

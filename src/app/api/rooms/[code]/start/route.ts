@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { rounds } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import {
   createRoomService,
   RoomNotFoundError,
@@ -8,6 +10,8 @@ import {
   InsufficientPlayersError,
   InvalidConfigError,
 } from "@/lib/rooms/service";
+import { getAblyRest } from "@/lib/realtime/server";
+import { channels } from "@/lib/realtime/channels";
 
 export async function POST(
   req: NextRequest,
@@ -42,6 +46,22 @@ export async function POST(
       numRounds,
       scoringMode,
     });
+
+    // Fetch the first round's ID so clients can load their prompt options
+    const [firstRound] = await db
+      .select({ id: rounds.id })
+      .from(rounds)
+      .where(and(eq(rounds.roomId, result.id), eq(rounds.roundNumber, 1)));
+
+    if (firstRound) {
+      await getAblyRest()
+        .channels.get(channels.roomStatus(code.toUpperCase()))
+        .publish("room-status-changed", {
+          status: "prompts",
+          roundId: firstRound.id,
+        });
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof RoomNotFoundError) {

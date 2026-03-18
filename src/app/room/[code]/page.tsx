@@ -1,8 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { rooms, players } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { rooms, players, rounds } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 import { LobbyPlayerList } from "./LobbyPlayerList";
 
 interface Props {
@@ -31,16 +31,30 @@ export default async function LobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
+  // If the room is already in the prompts phase (e.g. player refreshed), fetch the round ID
+  let initialRoundId: string | undefined;
+  if (room.status === "prompts") {
+    const [firstRound] = await db
+      .select({ id: rounds.id })
+      .from(rounds)
+      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
+    initialRoundId = firstRound?.id;
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
       <h1 className="text-6xl font-black tracking-widest mb-8">{upperCode}</h1>
-      <p className="text-gray-500 mb-6">Waiting for players…</p>
+      {room.status === "lobby" && (
+        <p className="text-gray-500 mb-6">Waiting for players…</p>
+      )}
 
       <LobbyPlayerList
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
+        initialStatus={room.status}
+        initialRoundId={initialRoundId}
       />
     </main>
   );
