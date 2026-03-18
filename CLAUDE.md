@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #18 in review (PR #19, branch `feat/host-phone-join-issue-18`) — host phone join flow implemented. `GET /room/[code]/connect?pid=` sets cookie and redirects; QR code on host screen encodes the connect URL; host redirect removed from player page; `LobbyPlayerList` renders inline Host Controls when `isHost=true`. `db:reset` now publishes `room-reset` to Ably channels before truncating. 34 Vitest tests total (4 new for connect route). Lint and typecheck pass. Provision Neon + Ably and fill in `.env.local` (see `.env.local.example`) before running.
+Issue #6 in progress (PR #20, branch `feat/prompt-selection-issue-6`) — full prompt selection phase + host phone join merged. Host creates room on their phone, starts game from phone; TV/laptop is display-only. QR code on host screen for phone connect. 43 Vitest tests. Issue #5 (PR #17, chain router) still open. Provision Neon + Ably and fill in `.env.local` before running.
 
 ## Stack
 

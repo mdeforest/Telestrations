@@ -4,6 +4,7 @@
 export const channels = {
   roomStatus: (code: string) => `room:${code}:status`,
   roomPlayers: (code: string) => `room:${code}:players`,
+  roomPrompts: (code: string) => `room:${code}:prompts`,
   roundTimer: (code: string) => `room:${code}:round:timer`,
   roundPass: (code: string) => `room:${code}:round:pass`,
   revealAdvance: (code: string) => `room:${code}:reveal:advance`,

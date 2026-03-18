@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
+import { PromptSelectionScreen } from "./PromptSelectionScreen";
 
 interface Player {
   id: string;
@@ -17,6 +18,8 @@ interface Props {
   isHost: boolean;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
+  initialStatus?: string;
+  initialRoundId?: string;
 }
 
 export function LobbyPlayerList({
@@ -26,6 +29,8 @@ export function LobbyPlayerList({
   isHost,
   initialNumRounds,
   initialScoringMode,
+  initialStatus = "lobby",
+  initialRoundId,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
@@ -33,14 +38,16 @@ export function LobbyPlayerList({
   const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState(initialStatus);
+  const [roundId, setRoundId] = useState(initialRoundId ?? "");
 
   const canStart = playerList.length >= 4;
 
   useEffect(() => {
     const ably = getAblyClient();
-    const channel = ably.channels.get(channels.roomPlayers(code));
 
-    channel.subscribe("players-updated", (msg) => {
+    const playersCh = ably.channels.get(channels.roomPlayers(code));
+    playersCh.subscribe("players-updated", (msg) => {
       const { players, hostPlayerId: newHostId } = msg.data as {
         players: Player[];
         hostPlayerId: string;
@@ -49,8 +56,23 @@ export function LobbyPlayerList({
       setCurrentHostId(newHostId);
     });
 
+    const statusCh = ably.channels.get(channels.roomStatus(code));
+    statusCh.subscribe("room-status-changed", (msg) => {
+      const { status: newStatus, roundId: newRoundId } = msg.data as {
+        status: string;
+        roundId?: string;
+      };
+      if (newStatus === "active") {
+        window.location.reload();
+        return;
+      }
+      setStatus(newStatus);
+      if (newRoundId) setRoundId(newRoundId);
+    });
+
     return () => {
-      channel.unsubscribe();
+      playersCh.unsubscribe();
+      statusCh.unsubscribe();
     };
   }, [code]);
 
@@ -72,6 +94,19 @@ export function LobbyPlayerList({
       setError("Network error");
       setStarting(false);
     }
+  }
+
+  if (status === "prompts" && roundId) {
+    return <PromptSelectionScreen roundId={roundId} />;
+  }
+
+  if (status === "active") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-12">
+        <p className="text-xl font-bold">Game in progress</p>
+        <p className="text-gray-500 text-sm">Drawing phase coming soon.</p>
+      </div>
+    );
   }
 
   return (

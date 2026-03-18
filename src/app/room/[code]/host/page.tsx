@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { rooms, players } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { rooms, players, books, rounds } from "@/lib/db/schema";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { HostLobby } from "./HostLobby";
 
 interface Props {
@@ -22,6 +22,22 @@ export default async function HostLobbyPage({ params }: Props) {
 
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
+  let initialSelectedCount = 0;
+  if (room.status === "prompts") {
+    const [firstRound] = await db
+      .select({ id: rounds.id })
+      .from(rounds)
+      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
+
+    if (firstRound) {
+      const [counts] = await db
+        .select({ selected: sql<number>`cast(count(*) as integer)` })
+        .from(books)
+        .where(and(eq(books.roundId, firstRound.id), ne(books.originalPrompt, "")));
+      initialSelectedCount = counts.selected;
+    }
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
       <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
@@ -31,8 +47,8 @@ export default async function HostLobbyPage({ params }: Props) {
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
-        initialNumRounds={room.numRounds}
-        initialScoringMode={room.scoringMode}
+        initialStatus={room.status}
+        initialSelectedCount={initialSelectedCount}
       />
     </main>
   );
