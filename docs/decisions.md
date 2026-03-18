@@ -9,7 +9,8 @@ Decisions made during design session on 2026-03-18.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Framework | Next.js | Existing preference |
-| Realtime | Supabase Realtime | Already using Supabase; one less vendor; free tier covers party game scale (200 concurrent, 2M msgs/month) |
+| Database | Neon + Drizzle ORM | Serverless Postgres, unlimited free projects; Drizzle schema-as-code eliminates the manual types.ts/migration split |
+| Realtime | Ably | 6M messages/month free, 200 concurrent connections; channel-scoping model is identical to what was planned for Supabase Realtime |
 | Deployment | Internet-hosted | Players join via room code at a public URL; no LAN required |
 | Device model | Host screen + player phones | Host screen on TV/laptop (browser); each player uses their own phone to draw/guess |
 
@@ -82,7 +83,7 @@ The host can advance the reveal from either:
 - The TV browser (keyboard/click)
 - Their player phone (host controls section)
 
-Both emit the same Supabase Realtime event.
+Both publish to the same Ably channel.
 
 ---
 
