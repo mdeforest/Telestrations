@@ -67,7 +67,7 @@ export function LobbyPlayerList({
   }, [code]);
 
   if (status === "prompts" && roundId) {
-    return <PromptSelectionScreen code={code} roundId={roundId} />;
+    return <PromptSelectionScreen roundId={roundId} />;
   }
 
   return (

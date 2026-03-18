@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAblyClient } from "@/lib/realtime/client";
-import { channels } from "@/lib/realtime/channels";
 
 interface PromptOption {
   id: string;
@@ -10,13 +8,12 @@ interface PromptOption {
 }
 
 interface Props {
-  code: string;
   roundId: string;
   /** Called once the player has submitted (or was already submitted on load). */
   onSelected?: () => void;
 }
 
-export function PromptSelectionScreen({ code, roundId, onSelected }: Props) {
+export function PromptSelectionScreen({ roundId, onSelected }: Props) {
   const [options, setOptions] = useState<PromptOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(false);
@@ -42,23 +39,9 @@ export function PromptSelectionScreen({ code, roundId, onSelected }: Props) {
       });
   }, [roundId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Subscribe to room status — navigate to game when all players selected
-  useEffect(() => {
-    const ably = getAblyClient();
-    const channel = ably.channels.get(channels.roomStatus(code));
-
-    channel.subscribe("room-status-changed", (msg) => {
-      const { status } = msg.data as { status: string };
-      if (status === "active") {
-        // Full page reload to get the updated server-rendered game view
-        window.location.reload();
-      }
-    });
-
-    return () => {
-      channel.unsubscribe();
-    };
-  }, [code]);
+  // Note: the "active" reload is handled by the parent (LobbyPlayerList /
+  // HostLobby) which always has a roomStatus subscription. No need to duplicate
+  // it here.
 
   async function handleSelect(promptId: string) {
     setSubmitting(true);

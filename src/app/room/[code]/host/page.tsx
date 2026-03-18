@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { rooms, players, books, rounds } from "@/lib/db/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
@@ -16,9 +15,6 @@ export default async function HostLobbyPage({ params }: Props) {
   const [room] = await db.select().from(rooms).where(eq(rooms.code, upperCode));
   if (!room) notFound();
 
-  const cookieStore = await cookies();
-  const hostPlayerId = cookieStore.get("playerId")?.value ?? room.hostPlayerId ?? "";
-
   const playerList = await db
     .select({ id: players.id, nickname: players.nickname, seatOrder: players.seatOrder })
     .from(players)
@@ -29,7 +25,6 @@ export default async function HostLobbyPage({ params }: Props) {
   // If already in prompts phase (e.g. host refreshed), load round + selection state
   let initialSelectedCount = 0;
   let initialRoundId: string | undefined;
-  let initialHostSelected = false;
 
   if (room.status === "prompts") {
     const [firstRound] = await db
@@ -47,18 +42,6 @@ export default async function HostLobbyPage({ params }: Props) {
         .from(books)
         .where(and(eq(books.roundId, firstRound.id), ne(books.originalPrompt, "")));
       initialSelectedCount = counts.selected;
-
-      // Check whether the host specifically has selected
-      const [hostBook] = await db
-        .select({ originalPrompt: books.originalPrompt })
-        .from(books)
-        .where(
-          and(
-            eq(books.roundId, firstRound.id),
-            eq(books.ownerPlayerId, hostPlayerId)
-          )
-        );
-      initialHostSelected = !!hostBook && hostBook.originalPrompt !== "";
     }
   }
 
@@ -76,7 +59,6 @@ export default async function HostLobbyPage({ params }: Props) {
         initialStatus={room.status}
         initialSelectedCount={initialSelectedCount}
         initialRoundId={initialRoundId}
-        initialHostSelected={initialHostSelected}
       />
     </main>
   );
