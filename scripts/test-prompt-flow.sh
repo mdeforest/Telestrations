@@ -35,7 +35,7 @@ echo "  2. Create a room (you are the host)"
 echo "  3. Paste the room code below"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 read -r -p "  Room code: " CODE
-CODE="${CODE^^}"  # uppercase
+CODE=$(echo "$CODE" | tr '[:lower:]' '[:upper:]')
 echo ""
 
 # ── Step 2: bots join ────────────────────────────────────────────────────────
