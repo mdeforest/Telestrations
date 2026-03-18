@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # test-prompt-flow.sh
 #
-# Simulates 4 players going through the full prompt-selection phase:
-#   create room → join × 3 → start → fetch prompts → all select → active
+# Simulates 3 bot players + waits for you (the 4th) to join and select manually.
+#
+# Flow:
+#   1. Bots create room + join (Alice as host, Bob and Carol as players)
+#   2. Prints room code — you open the browser and join as the 4th player
+#   3. Press Enter — bots start the game
+#   4. Browser shows prompt selection; bots select their prompts after a short delay
+#   5. You select yours in the browser — room transitions to active
 #
 # Usage:
 #   ./scripts/test-prompt-flow.sh [BASE_URL]
@@ -12,8 +18,8 @@
 set -euo pipefail
 
 BASE="${1:-http://localhost:3000}"
-JARS=(/tmp/tele_p1.txt /tmp/tele_p2.txt /tmp/tele_p3.txt /tmp/tele_p4.txt)
-NAMES=("Alice" "Bob" "Carol" "Dave")
+JARS=(/tmp/tele_p1.txt /tmp/tele_p2.txt /tmp/tele_p3.txt)
+NAMES=("Alice" "Bob" "Carol")
 
 cleanup() { rm -f "${JARS[@]}"; }
 trap cleanup EXIT
@@ -25,13 +31,12 @@ ok()   { echo "  ✓ $*"; }
 fail() { echo "  ✗ $*" >&2; exit 1; }
 
 json_get() {
-  # json_get <json_string> <key>
   echo "$1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('$2',''))"
 }
 
 # ── 1. Create room ──────────────────────────────────────────────────────────
 
-log "Creating room as ${NAMES[0]}…"
+log "Creating room as ${NAMES[0]} (host)…"
 CREATE=$(curl -sf -c "${JARS[0]}" -b "${JARS[0]}" \
   -X POST "$BASE/api/rooms" \
   -H "Content-Type: application/json" \
@@ -41,9 +46,9 @@ CODE=$(json_get "$CREATE" "code")
 [[ -n "$CODE" ]] || fail "No room code in response: $CREATE"
 ok "Room code: $CODE"
 
-# ── 2. Join with 3 more players ─────────────────────────────────────────────
+# ── 2. Two more bots join ────────────────────────────────────────────────────
 
-for i in 1 2 3; do
+for i in 1 2; do
   log "Joining as ${NAMES[$i]}…"
   JOIN=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
     -X POST "$BASE/api/rooms/$CODE/join" \
@@ -53,9 +58,20 @@ for i in 1 2 3; do
   ok "${NAMES[$i]} joined (seat $SEAT)"
 done
 
-# ── 3. Start game ────────────────────────────────────────────────────────────
+# ── 3. Wait for you ──────────────────────────────────────────────────────────
 
-log "Starting game…"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Room code: $CODE"
+echo "  Open: $BASE/room/$CODE"
+echo "  Join as the 4th player in your browser, then press Enter."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -r -p "  [Enter when you've joined] "
+echo ""
+
+# ── 4. Start game ────────────────────────────────────────────────────────────
+
+log "Starting game (as Alice)…"
 START=$(curl -sf -c "${JARS[0]}" -b "${JARS[0]}" \
   -X POST "$BASE/api/rooms/$CODE/start" \
   -H "Content-Type: application/json" \
@@ -63,13 +79,16 @@ START=$(curl -sf -c "${JARS[0]}" -b "${JARS[0]}" \
 
 ROUND_ID=$(json_get "$START" "roundId")
 [[ -n "$ROUND_ID" ]] || fail "No roundId in start response: $START"
-ok "Round ID: $ROUND_ID"
+ok "Round started — ID: $ROUND_ID"
 
-# ── 4 & 5. Each player fetches options and selects ───────────────────────────
+# ── 5. Bots select prompts after a short delay ───────────────────────────────
 
-ALL_SELECTED=""
-for i in 0 1 2 3; do
-  log "${NAMES[$i]} fetching prompt options…"
+echo ""
+echo "  Your browser should now show the prompt selection screen."
+echo "  Bots will select their prompts in 5 seconds…"
+sleep 5
+
+for i in 0 1 2; do
   OPTS=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
     "$BASE/api/rounds/$ROUND_ID/prompts")
 
@@ -86,21 +105,14 @@ for i in 0 1 2 3; do
   PROMPT_TEXT=$(echo "$OPTS" | python3 -c \
     "import sys,json; opts=json.load(sys.stdin)['options']; print(opts[0]['text']) if opts else print('')")
 
-  log "${NAMES[$i]} selecting: \"$PROMPT_TEXT\"…"
   SELECT=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
     -X POST "$BASE/api/rounds/$ROUND_ID/prompt" \
     -H "Content-Type: application/json" \
     -d "{\"promptId\":\"$PROMPT_ID\"}")
 
-  ALL_SELECTED=$(json_get "$SELECT" "allSelected")
-  ok "${NAMES[$i]} selected (allSelected=$ALL_SELECTED)"
+  ok "${NAMES[$i]} selected: \"$PROMPT_TEXT\""
 done
 
-# ── Result ───────────────────────────────────────────────────────────────────
-
 echo ""
-if [[ "$ALL_SELECTED" == "True" || "$ALL_SELECTED" == "true" ]]; then
-  echo "✅  All players selected — room transitioned to active"
-else
-  echo "⚠️  Last allSelected=$ALL_SELECTED (may already have been active, or check room status)"
-fi
+echo "  3 of 4 players have selected."
+echo "  Select your prompt in the browser to start the round."
