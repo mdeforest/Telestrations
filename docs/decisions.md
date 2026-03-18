@@ -24,6 +24,23 @@ Decisions made during design session on 2026-03-18.
 | Room creation | Any player can create a room; creator becomes host |
 | Join method | 6-character room code |
 | Host powers | Start game, advance reveal, control game flow from either their phone or the host screen (TV) |
+| Host two-device flow | Host creates room on laptop (TV screen) → phone scans QR to connect as same player → phone shows player view + inline host controls |
+
+---
+
+## Host Two-Device Flow
+
+The host is both the TV operator and a full player. They need two connected sessions:
+
+**Laptop/TV** → `POST /api/rooms` → navigates to `/room/{code}/host` directly (no redirect needed from player page).
+
+**Phone** → scans QR code shown on host screen → hits `GET /room/{code}/connect?pid={playerId}` → server sets `playerId` cookie → redirects to `/room/{code}` → player view with inline host controls.
+
+Key decisions:
+- The `playerId` UUID is embedded directly in the QR URL (no separate token table). Acceptable for an ephemeral party game played in a shared physical space.
+- `/room/{code}` is the universal **player view**. It no longer auto-redirects to `/room/{code}/host` — the host screen is accessed by direct navigation only.
+- When `playerId === hostPlayerId`, the player view renders an extra "Host Controls" section (start game, advance reveal) in addition to the normal drawing/guessing UI.
+- The connect route is stateless — it only sets a cookie and redirects. No DB write needed.
 
 ---
 
