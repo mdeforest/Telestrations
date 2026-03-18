@@ -79,21 +79,22 @@ export function HostLobby({
 
   return (
     <div className="w-full max-w-sm flex flex-col gap-6">
-      {/* QR code — opt-in so other players at the TV don't accidentally scan it */}
+      {/* QR code — opt-in so other players at the TV don't accidentally scan it.
+           phoneConnected only controls the label; showQr controls visibility. */}
       <section className="flex flex-col items-center gap-2">
-        {phoneConnected ? (
-          <p className="text-xs text-green-600 font-medium">✓ Phone connected</p>
-        ) : showQr ? (
+        {showQr ? (
           <>
             <QRCodeSVG value={connectUrl} size={160} />
-            <p className="text-xs text-gray-500">Scan to play on your phone</p>
+            <p className={`text-xs font-medium ${phoneConnected ? "text-green-600" : "text-gray-500"}`}>
+              {phoneConnected ? "✓ Phone connected" : "Scan to play on your phone"}
+            </p>
           </>
         ) : (
           <button
             onClick={() => setShowQr(true)}
             className="text-sm text-blue-600 underline underline-offset-2"
           >
-            Connect your phone
+            {phoneConnected ? "✓ Phone connected — scan again" : "Connect your phone"}
           </button>
         )}
       </section>
