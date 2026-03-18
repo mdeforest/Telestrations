@@ -1,5 +1,6 @@
-import { rooms, players } from "@/lib/db/schema";
+import { rooms, players, rounds, books, entries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { chainRouter, chainLength, entryType } from "@/lib/game/chain-router";
 
 // ── Error types ─────────────────────────────────────────────────────────────
 
@@ -151,6 +152,57 @@ export function createRoomService(db: any) {
       .set({ status: "prompts", numRounds: config.numRounds, scoringMode: config.scoringMode })
       .where(eq(rooms.id, room.id))
       .returning();
+
+    // Create all rounds, books, and entries upfront with deterministic routing.
+    const N = roomPlayers.length;
+    const len = chainLength(N);
+
+    // Sort players by seatOrder so index === ownerSeat (0-based)
+    const sortedPlayers = [...roomPlayers].sort(
+      (a: { seatOrder: number }, b: { seatOrder: number }) => a.seatOrder - b.seatOrder
+    );
+
+    // 1. Bulk-insert all rounds
+    const roundRows = Array.from({ length: config.numRounds }, (_, i) => ({
+      roomId: room.id,
+      roundNumber: i + 1,
+    }));
+    const createdRounds = await db.insert(rounds).values(roundRows).returning();
+
+    for (const round of createdRounds) {
+      // 2. Bulk-insert all books for this round (one per player, prompt filled in later)
+      const bookRows = sortedPlayers.map((p: { id: string }) => ({
+        roundId: round.id,
+        ownerPlayerId: p.id,
+        originalPrompt: "",
+      }));
+      const createdBooks = await db.insert(books).values(bookRows).returning();
+
+      // 3. Bulk-insert all entries for this round's books
+      const entryRows: {
+        bookId: string;
+        passNumber: number;
+        authorPlayerId: string;
+        type: "drawing" | "guess";
+      }[] = [];
+
+      for (const book of createdBooks) {
+        const ownerSeat = sortedPlayers.findIndex(
+          (p: { id: string }) => p.id === book.ownerPlayerId
+        );
+        for (let pass = 1; pass <= len; pass++) {
+          const authorSeat = chainRouter(ownerSeat, pass, N);
+          entryRows.push({
+            bookId: book.id,
+            passNumber: pass,
+            authorPlayerId: sortedPlayers[authorSeat].id,
+            type: entryType(pass),
+          });
+        }
+      }
+
+      await db.insert(entries).values(entryRows).returning();
+    }
 
     return { id: updated.id, code: updated.code, status: updated.status };
   }
