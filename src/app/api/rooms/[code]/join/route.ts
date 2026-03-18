@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const nickname = typeof body.nickname === "string" ? body.nickname.trim() : "";
 
   if (!nickname) {
