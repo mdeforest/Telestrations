@@ -15,6 +15,7 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
+  isHost?: boolean;
   initialStatus?: string;
   initialRoundId?: string;
 }
@@ -23,6 +24,7 @@ export function LobbyPlayerList({
   code,
   initialPlayers,
   hostPlayerId,
+  isHost = false,
   initialStatus = "lobby",
   initialRoundId,
 }: Props) {
@@ -30,6 +32,8 @@ export function LobbyPlayerList({
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
   const [status, setStatus] = useState(initialStatus);
   const [roundId, setRoundId] = useState(initialRoundId ?? "");
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   useEffect(() => {
     const ably = getAblyClient();
@@ -66,24 +70,66 @@ export function LobbyPlayerList({
     };
   }, [code]);
 
+  async function handleStart() {
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await fetch(`/api/rooms/${code}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numRounds: 3, scoringMode: "friendly" }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setStartError(data.error ?? "Failed to start");
+        setStarting(false);
+      }
+    } catch {
+      setStartError("Network error");
+      setStarting(false);
+    }
+  }
+
   if (status === "prompts" && roundId) {
     return <PromptSelectionScreen roundId={roundId} />;
   }
 
+  const canStart = playerList.length >= 4;
+
   return (
-    <ul className="w-full max-w-xs space-y-2">
-      {playerList.map((p) => (
-        <li
-          key={p.id}
-          className="flex items-center gap-3 rounded-lg border px-4 py-3"
-        >
-          <span className="text-sm text-gray-400 w-5 text-right">{p.seatOrder}</span>
-          <span className="font-medium">{p.nickname}</span>
-          {p.id === currentHostId && (
-            <span className="ml-auto text-xs text-blue-500">host</span>
+    <div className="w-full max-w-xs flex flex-col gap-4">
+      <ul className="space-y-2">
+        {playerList.map((p) => (
+          <li
+            key={p.id}
+            className="flex items-center gap-3 rounded-lg border px-4 py-3"
+          >
+            <span className="text-sm text-gray-400 w-5 text-right">{p.seatOrder}</span>
+            <span className="font-medium">{p.nickname}</span>
+            {p.id === currentHostId && (
+              <span className="ml-auto text-xs text-blue-500">host</span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {isHost && (
+        <div className="flex flex-col gap-2">
+          {startError && <p className="text-sm text-red-600">{startError}</p>}
+          {!canStart && (
+            <p className="text-sm text-amber-600">
+              Need at least 4 players ({4 - playerList.length} more)
+            </p>
           )}
-        </li>
-      ))}
-    </ul>
+          <button
+            onClick={handleStart}
+            disabled={!canStart || starting}
+            className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+          >
+            {starting ? "Starting…" : "Start Game"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

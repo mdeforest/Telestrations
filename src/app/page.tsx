@@ -21,7 +21,7 @@ export default function Home() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Failed to create room"); setLoading(false); return; }
-    router.push(`/room/${data.code}/host`);
+    router.push(`/room/${data.code}`);
   }
 
   async function handleJoin() {
