@@ -62,7 +62,7 @@ export async function POST(
         });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, roundId: firstRound?.id ?? null });
   } catch (err) {
     if (err instanceof RoomNotFoundError) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
