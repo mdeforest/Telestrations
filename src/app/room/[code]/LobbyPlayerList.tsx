@@ -75,6 +75,12 @@ export function LobbyPlayerList({
       setStatus(newStatus);
       if (newRoundId) setRoundId(newRoundId);
       if (newTimer !== undefined) setTimerStartedAt(newTimer);
+      // Reset pass type whenever we leave the active phase so the next round
+      // doesn't briefly show the wrong phase screen before my-entry resolves.
+      if (newStatus !== "active") {
+        setPassType(null);
+        setIncomingDrawing(null);
+      }
     });
 
     return () => {
