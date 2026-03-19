@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
@@ -42,11 +42,12 @@ export function GuessingPhaseScreen({
     passNumber: number;
   } | null>(null);
 
-  // Parse incoming drawing strokes once so DrawingCanvas can replay them
-  const replayStrokes: Stroke[] = (() => {
+  // Parse incoming drawing strokes — memoized so DrawingCanvas's useEffect
+  // doesn't re-fire on every render due to a new array reference.
+  const replayStrokes = useMemo<Stroke[]>(() => {
     if (!incomingDrawing) return [];
     try { return JSON.parse(incomingDrawing) as Stroke[]; } catch { return []; }
-  })();
+  }, [incomingDrawing]);
 
   // Countdown — recomputes every second from server-authoritative timerStartedAt
   useEffect(() => {
