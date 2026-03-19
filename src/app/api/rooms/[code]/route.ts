@@ -22,7 +22,7 @@ export async function GET(
   let roundId: string | null = null;
   let currentPass: number | null = null;
   if (room.status === "prompts" || room.status === "active") {
-    const roundNumber = room.status === "prompts" ? 1 : Math.max(room.currentRound, 1);
+    const roundNumber = Math.max(room.currentRound, 1);
     const [round] = await db
       .select({ id: rounds.id, currentPass: rounds.currentPass })
       .from(rounds)
