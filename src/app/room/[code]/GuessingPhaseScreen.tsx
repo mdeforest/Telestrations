@@ -171,9 +171,9 @@ export function GuessingPhaseScreen({
 
       {/* Incoming drawing — read-only canvas via DrawingCanvas replay */}
       <DrawingCanvas
-        onSubmit={() => {/* read-only; no submit */}}
+        onSubmit={() => undefined}
         replayStrokes={replayStrokes}
-        disabled
+        readOnly
       />
 
       <p className="text-sm text-gray-500 font-medium uppercase tracking-widest">

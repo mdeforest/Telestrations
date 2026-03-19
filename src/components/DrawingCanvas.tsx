@@ -9,9 +9,11 @@ interface DrawingCanvasProps {
   onSubmit: (strokes: Stroke[]) => void;
   replayStrokes?: Stroke[];
   disabled?: boolean;
+  /** When true, hides brush controls and submit button — canvas is view-only. */
+  readOnly?: boolean;
 }
 
-export function DrawingCanvas({ onSubmit, replayStrokes, disabled }: DrawingCanvasProps) {
+export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>(replayStrokes ?? []);
   const currentStroke = useRef<Point[]>([]);
@@ -107,33 +109,37 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled }: DrawingCanv
         width={400}
         height={400}
         className="border border-gray-300 touch-none"
-        onMouseDown={startDrawing}
-        onMouseMove={continueDrawing}
-        onMouseUp={endDrawing}
-        onMouseLeave={endDrawing}
-        onTouchStart={startDrawing}
-        onTouchMove={continueDrawing}
-        onTouchEnd={endDrawing}
+        onMouseDown={readOnly ? undefined : startDrawing}
+        onMouseMove={readOnly ? undefined : continueDrawing}
+        onMouseUp={readOnly ? undefined : endDrawing}
+        onMouseLeave={readOnly ? undefined : endDrawing}
+        onTouchStart={readOnly ? undefined : startDrawing}
+        onTouchMove={readOnly ? undefined : continueDrawing}
+        onTouchEnd={readOnly ? undefined : endDrawing}
       />
-      <div className="flex items-center gap-2">
-        <label htmlFor="brush-size">Brush size</label>
-        <input
-          id="brush-size"
-          type="range"
-          min={1}
-          max={20}
-          value={brushSize}
-          onChange={(e) => setBrushSize(Number(e.target.value))}
-        />
-        <span>{brushSize}px</span>
-      </div>
-      <button
-        onClick={handleSubmit}
-        disabled={disabled}
-        className="w-full py-3 rounded-xl font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-      >
-        {disabled ? "Submitting…" : "Submit Drawing"}
-      </button>
+      {!readOnly && (
+        <>
+          <div className="flex items-center gap-2">
+            <label htmlFor="brush-size">Brush size</label>
+            <input
+              id="brush-size"
+              type="range"
+              min={1}
+              max={20}
+              value={brushSize}
+              onChange={(e) => setBrushSize(Number(e.target.value))}
+            />
+            <span>{brushSize}px</span>
+          </div>
+          <button
+            onClick={handleSubmit}
+            disabled={disabled}
+            className="w-full py-3 rounded-xl font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+          >
+            {disabled ? "Submitting…" : "Submit Drawing"}
+          </button>
+        </>
+      )}
     </div>
   );
 }
