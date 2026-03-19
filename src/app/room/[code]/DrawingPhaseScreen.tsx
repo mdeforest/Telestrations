@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
+import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 
 const ROUND_DURATION_SECONDS = 60;
 
@@ -85,13 +86,10 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
     };
   }, [code, playerId]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (strokes: Stroke[]) => {
     if (!entryInfo) return;
     setSubmitting(true);
     setError(null);
-
-    // Placeholder content — real drawing JSON will come from the canvas in #7
-    const placeholderContent = JSON.stringify([]);
 
     try {
       const res = await fetch("/api/entries", {
@@ -101,7 +99,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
           bookId: entryInfo.bookId,
           passNumber: entryInfo.passNumber,
           type: "drawing",
-          content: placeholderContent,
+          content: JSON.stringify(strokes),
         }),
       });
 
@@ -159,26 +157,12 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
         {timeLabel}
       </div>
 
-      {/* Canvas placeholder — real canvas lands with issue #7 */}
-      <div
-        className="w-full aspect-square border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center bg-gray-50"
-        role="img"
-        aria-label="Drawing canvas (coming soon)"
-      >
-        <p className="text-gray-400 text-sm text-center px-4">
-          Drawing canvas — coming in issue #7
-        </p>
-      </div>
-
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      <button
-        onClick={handleSubmit}
+      <DrawingCanvas
+        onSubmit={handleSubmit}
         disabled={submitting || !entryInfo}
-        className="w-full py-4 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-      >
-        {submitting ? "Submitting…" : "Submit Drawing"}
-      </button>
+      />
     </div>
   );
 }
