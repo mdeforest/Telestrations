@@ -70,10 +70,14 @@ export async function POST(req: NextRequest) {
 
           if (room) {
             if (result.roundComplete) {
-              // All passes done — advance to next round or finish
-              if (room.currentRound < room.numRounds) {
-                // Start next round: bump currentRound, set status back to prompts
-                const nextRoundNumber = room.currentRound + 1;
+              // All passes done — advance to next round or finish.
+              // currentRound defaults to 0; page.tsx uses Math.max(currentRound, 1)
+              // to get the actual 1-based round number being played.
+              const currentRoundNumber = Math.max(room.currentRound, 1);
+
+              if (currentRoundNumber < room.numRounds) {
+                // Start next round: set currentRound to the next round number
+                const nextRoundNumber = currentRoundNumber + 1;
                 await db
                   .update(rooms)
                   .set({ status: "prompts", currentRound: nextRoundNumber })
@@ -180,8 +184,10 @@ export async function DELETE(req: NextRequest) {
 
     if (room) {
       if (expireResult.roundComplete) {
-        if (room.currentRound < room.numRounds) {
-          const nextRoundNumber = room.currentRound + 1;
+        const currentRoundNumber = Math.max(room.currentRound, 1);
+
+        if (currentRoundNumber < room.numRounds) {
+          const nextRoundNumber = currentRoundNumber + 1;
           await db
             .update(rooms)
             .set({ status: "prompts", currentRound: nextRoundNumber })
