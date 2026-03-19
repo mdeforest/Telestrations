@@ -59,6 +59,7 @@ export default async function LobbyPage({ params }: Props) {
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
+        playerId={playerId ?? ""}
         isHost={isHost}
         initialNumRounds={room.numRounds}
         initialScoringMode={room.scoringMode}

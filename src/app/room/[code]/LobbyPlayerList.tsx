@@ -16,6 +16,7 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
+  playerId: string;
   isHost: boolean;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
@@ -28,6 +29,7 @@ export function LobbyPlayerList({
   code,
   initialPlayers,
   hostPlayerId,
+  playerId,
   isHost,
   initialNumRounds,
   initialScoringMode,
@@ -107,6 +109,7 @@ export function LobbyPlayerList({
       <DrawingPhaseScreen
         code={code}
         roundId={roundId}
+        playerId={playerId}
         timerStartedAt={timerStartedAt}
       />
     );

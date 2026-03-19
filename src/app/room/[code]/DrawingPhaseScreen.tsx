@@ -9,6 +9,7 @@ const ROUND_DURATION_SECONDS = 60;
 interface Props {
   code: string;
   roundId: string;
+  playerId: string;
   /** ISO string from the server; null means the timer hasn't started yet */
   timerStartedAt: string | null;
 }
@@ -22,7 +23,7 @@ interface Props {
  * - A submit button
  * - A "Waiting for others" screen after submission
  */
-export function DrawingPhaseScreen({ code, roundId, timerStartedAt }: Props) {
+export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: Props) {
   const [secondsLeft, setSecondsLeft] = useState<number>(ROUND_DURATION_SECONDS);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +74,16 @@ export function DrawingPhaseScreen({ code, roundId, timerStartedAt }: Props) {
     });
     return () => ch.unsubscribe();
   }, [code]);
+
+  // Enter Ably presence so the host screen can detect disconnects
+  useEffect(() => {
+    const ably = getAblyClient();
+    const presenceCh = ably.channels.get(channels.roomPlayers(code));
+    presenceCh.presence.enter({ playerId });
+    return () => {
+      presenceCh.presence.leave();
+    };
+  }, [code, playerId]);
 
   const handleSubmit = useCallback(async () => {
     if (!entryInfo) return;

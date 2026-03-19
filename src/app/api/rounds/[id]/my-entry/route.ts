@@ -28,37 +28,22 @@ export async function GET(
     return NextResponse.json({ error: "Round not found" }, { status: 404 });
   }
 
-  // Find the entry assigned to this player for the current pass
-  // Entries are spread across all books in the round, so we join entries → books
-  const roundBooks = await db
-    .select({ id: books.id })
-    .from(books)
-    .where(eq(books.roundId, roundId));
-
-  const bookIds = roundBooks.map((b) => b.id);
-
-  // Find the entry where this player is the author for the current pass
-  let myEntry: { bookId: string; passNumber: number; submittedAt: Date | null } | undefined;
-  for (const bookId of bookIds) {
-    const [entry] = await db
-      .select({
-        bookId: entries.bookId,
-        passNumber: entries.passNumber,
-        submittedAt: entries.submittedAt,
-      })
-      .from(entries)
-      .where(
-        and(
-          eq(entries.bookId, bookId),
-          eq(entries.passNumber, round.currentPass),
-          eq(entries.authorPlayerId, playerId)
-        )
-      );
-    if (entry) {
-      myEntry = entry;
-      break;
-    }
-  }
+  // Single join query: entries for this player + pass, in a book that belongs to this round
+  const [myEntry] = await db
+    .select({
+      bookId: entries.bookId,
+      passNumber: entries.passNumber,
+      submittedAt: entries.submittedAt,
+    })
+    .from(entries)
+    .innerJoin(books, eq(entries.bookId, books.id))
+    .where(
+      and(
+        eq(books.roundId, roundId),
+        eq(entries.passNumber, round.currentPass),
+        eq(entries.authorPlayerId, playerId)
+      )
+    );
 
   if (!myEntry) {
     return NextResponse.json({ error: "No entry found for this player" }, { status: 404 });

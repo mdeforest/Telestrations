@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { books, entries, players, rounds } from "@/lib/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 /**
  * GET /api/rounds/[id]/drawing-status
@@ -33,13 +33,14 @@ export async function GET(
 
   const bookIds = roundBooks.map((b) => b.id);
 
-  // Entries for current pass that haven't been submitted yet (and aren't blank)
+  // Entries for current pass that haven't been submitted yet, scoped to this round's books
   const pendingEntries = bookIds.length > 0
     ? await db
         .select({ authorPlayerId: entries.authorPlayerId })
         .from(entries)
         .where(
           and(
+            inArray(entries.bookId, bookIds),
             eq(entries.passNumber, round.currentPass),
             isNull(entries.submittedAt)
           )

@@ -53,12 +53,33 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer 
     fetchStatus();
 
     const ably = getAblyClient();
-    const ch = ably.channels.get(channels.roundPass(code));
-    ch.subscribe("pass-advanced", () => { fetchStatus(); });
+
+    // Refresh pending list when a pass advances
+    const passCh = ably.channels.get(channels.roundPass(code));
+    passCh.subscribe("pass-advanced", () => { fetchStatus(); });
+
+    // Update disconnected list when a player's connection status changes
+    const playersCh = ably.channels.get(channels.roomPlayers(code));
+    playersCh.subscribe("player-connection-changed", () => { fetchStatus(); });
+
+    // Subscribe to Ably presence leave/enter events and persist to DB
+    playersCh.presence.subscribe((member) => {
+      const data = member.data as { playerId?: string } | undefined;
+      const pid = data?.playerId;
+      if (!pid) return;
+      const isConnected = member.action === "enter" || member.action === "present";
+      fetch(`/api/players/${pid}/connection`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isConnected }),
+      }).catch(() => {/* non-fatal */});
+    });
 
     return () => {
       cancelled = true;
-      ch.unsubscribe();
+      passCh.unsubscribe();
+      playersCh.unsubscribe();
+      playersCh.presence.unsubscribe();
     };
   }, [roundId, code]);
 
