@@ -1,5 +1,5 @@
 import { books, entries, rounds } from "@/lib/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 // ── Errors ───────────────────────────────────────────────────────────────────
 
@@ -93,11 +93,14 @@ export function createEntryService(db: any) {
       return { allSubmitted: false };
     }
 
+    // Count unsubmitted entries for this pass, scoped to the round via join
     const [pending] = await db
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(entries)
+      .innerJoin(books, eq(entries.bookId, books.id))
       .where(
         and(
+          eq(books.roundId, book.roundId),
           eq(entries.passNumber, passNumber),
           isNull(entries.submittedAt)
         )
@@ -138,19 +141,31 @@ export function createEntryService(db: any) {
 
     if (!round) return;
 
-    // 1. Blank all unsubmitted entries for this pass in this round
-    await db
-      .update(entries)
-      .set({ isBlank: true, submittedAt: new Date() })
-      .where(
-        and(
-          eq(entries.passNumber, round.currentPass),
-          isNull(entries.submittedAt)
-        )
-      )
-      .returning();
+    // 1. Load all book IDs in this round to scope the entry update
+    const roundBooks = await db
+      .select({ id: books.id })
+      .from(books)
+      .where(eq(books.roundId, roundId));
 
-    // 2. Advance the pass
+    const bookIds = roundBooks.map((b: { id: string }) => b.id);
+
+    // 2. Blank unsubmitted entries — only within this round's books
+    //    Guard against inArray([]) which is invalid SQL in some drivers
+    if (bookIds.length > 0) {
+      await db
+        .update(entries)
+        .set({ isBlank: true, submittedAt: new Date() })
+        .where(
+          and(
+            inArray(entries.bookId, bookIds),
+            eq(entries.passNumber, round.currentPass),
+            isNull(entries.submittedAt)
+          )
+        )
+        .returning();
+    }
+
+    // 3. Advance the pass
     await db
       .update(rounds)
       .set({ currentPass: round.currentPass + 1, timerStartedAt: new Date() })

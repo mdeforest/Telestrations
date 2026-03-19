@@ -211,6 +211,7 @@ describe("expirePass", () => {
     const db = {
       select: makeSelectSequence([
         [ROUND_ROW],  // load round
+        [BOOK_ROW],   // load books in the round (for round-scoped blank)
       ]),
       update: updateMock,
     };
@@ -228,6 +229,7 @@ describe("expirePass", () => {
     const db = {
       select: makeSelectSequence([
         [ROUND_ROW],  // load round
+        [BOOK_ROW],   // load books in the round
       ]),
       update: updateMock,
     };
@@ -240,5 +242,24 @@ describe("expirePass", () => {
       currentPass: PASS_NUMBER + 1,
     });
     expect(setCalls[1]?.timerStartedAt).toBeInstanceOf(Date);
+  });
+
+  it("skips blanking entries when the round has no books — guarding against inArray([]) crash", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [ROUND_ROW],  // load round
+        [],           // no books in this round
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.expirePass(ROUND_ID);
+
+    // Only the round-advance update should happen, not the entry-blank update
+    expect(setCalls).toHaveLength(1);
+    expect(setCalls[0]).toMatchObject({ currentPass: PASS_NUMBER + 1 });
   });
 });
