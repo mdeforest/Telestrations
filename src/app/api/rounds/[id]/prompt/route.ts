@@ -63,9 +63,19 @@ export async function POST(
         });
 
       if (result.allSelected) {
+        // Fetch the timer start time to broadcast to clients
+        const [updatedRound] = await db
+          .select({ timerStartedAt: rounds.timerStartedAt })
+          .from(rounds)
+          .where(eq(rounds.id, roundId));
+
         await ably.channels
           .get(channels.roomStatus(roundInfo.code))
-          .publish("room-status-changed", { status: "active" });
+          .publish("room-status-changed", {
+            status: "active",
+            roundId,
+            timerStartedAt: updatedRound?.timerStartedAt?.toISOString() ?? null,
+          });
       }
     }
 

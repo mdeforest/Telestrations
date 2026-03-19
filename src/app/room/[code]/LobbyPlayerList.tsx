@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { PromptSelectionScreen } from "./PromptSelectionScreen";
+import { DrawingPhaseScreen } from "./DrawingPhaseScreen";
 
 interface Player {
   id: string;
@@ -15,22 +16,26 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
+  playerId: string;
   isHost: boolean;
   initialNumRounds: number;
   initialScoringMode: "friendly" | "competitive";
   initialStatus?: string;
   initialRoundId?: string;
+  initialTimerStartedAt?: string | null;
 }
 
 export function LobbyPlayerList({
   code,
   initialPlayers,
   hostPlayerId,
+  playerId,
   isHost,
   initialNumRounds,
   initialScoringMode,
   initialStatus = "lobby",
   initialRoundId,
+  initialTimerStartedAt = null,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
@@ -40,6 +45,7 @@ export function LobbyPlayerList({
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState(initialStatus);
   const [roundId, setRoundId] = useState(initialRoundId ?? "");
+  const [timerStartedAt, setTimerStartedAt] = useState<string | null>(initialTimerStartedAt);
 
   const canStart = playerList.length >= 4;
 
@@ -58,16 +64,14 @@ export function LobbyPlayerList({
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
     statusCh.subscribe("room-status-changed", (msg) => {
-      const { status: newStatus, roundId: newRoundId } = msg.data as {
+      const { status: newStatus, roundId: newRoundId, timerStartedAt: newTimer } = msg.data as {
         status: string;
         roundId?: string;
+        timerStartedAt?: string | null;
       };
-      if (newStatus === "active") {
-        window.location.reload();
-        return;
-      }
       setStatus(newStatus);
       if (newRoundId) setRoundId(newRoundId);
+      if (newTimer !== undefined) setTimerStartedAt(newTimer);
     });
 
     return () => {
@@ -100,12 +104,14 @@ export function LobbyPlayerList({
     return <PromptSelectionScreen roundId={roundId} />;
   }
 
-  if (status === "active") {
+  if (status === "active" && roundId) {
     return (
-      <div className="flex flex-col items-center gap-4 py-12">
-        <p className="text-xl font-bold">Game in progress</p>
-        <p className="text-gray-500 text-sm">Drawing phase coming soon.</p>
-      </div>
+      <DrawingPhaseScreen
+        code={code}
+        roundId={roundId}
+        playerId={playerId}
+        timerStartedAt={timerStartedAt}
+      />
     );
   }
 

@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
+import { HostDrawingScreen } from "./HostDrawingScreen";
 
 interface Player {
   id: string;
@@ -18,6 +19,8 @@ interface Props {
   hostPlayerId: string;
   initialStatus?: string;
   initialSelectedCount?: number;
+  initialRoundId?: string;
+  initialTimerStartedAt?: string | null;
 }
 
 export function HostLobby({
@@ -26,9 +29,13 @@ export function HostLobby({
   hostPlayerId,
   initialStatus = "lobby",
   initialSelectedCount = 0,
+  initialRoundId,
+  initialTimerStartedAt = null,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [status, setStatus] = useState(initialStatus);
+  const [roundId, setRoundId] = useState(initialRoundId ?? "");
+  const [timerStartedAt, setTimerStartedAt] = useState<string | null>(initialTimerStartedAt);
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
@@ -60,12 +67,14 @@ export function HostLobby({
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
     statusCh.subscribe("room-status-changed", (msg) => {
-      const { status: newStatus } = msg.data as { status: string };
-      if (newStatus === "active") {
-        window.location.reload();
-        return;
-      }
+      const { status: newStatus, roundId: newRoundId, timerStartedAt: newTimer } = msg.data as {
+        status: string;
+        roundId?: string;
+        timerStartedAt?: string | null;
+      };
       setStatus(newStatus);
+      if (newRoundId) setRoundId(newRoundId);
+      if (newTimer !== undefined) setTimerStartedAt(newTimer);
     });
 
     return () => {
@@ -74,11 +83,13 @@ export function HostLobby({
     };
   }, [code]);
 
-  if (status === "active") {
+  if (status === "active" && roundId) {
     return (
-      <div className="flex flex-col items-center gap-4 py-12">
-        <p className="text-xl font-bold">Game in progress</p>
-      </div>
+      <HostDrawingScreen
+        code={code}
+        roundId={roundId}
+        timerStartedAt={timerStartedAt}
+      />
     );
   }
 

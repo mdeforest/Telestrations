@@ -18,15 +18,18 @@ export async function GET(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  // If in prompts phase, include the active round ID
+  // Include the active round ID for prompts and active phases
   let roundId: string | null = null;
-  if (room.status === "prompts") {
+  let currentPass: number | null = null;
+  if (room.status === "prompts" || room.status === "active") {
+    const roundNumber = room.status === "prompts" ? 1 : Math.max(room.currentRound, 1);
     const [round] = await db
-      .select({ id: rounds.id })
+      .select({ id: rounds.id, currentPass: rounds.currentPass })
       .from(rounds)
-      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
+      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, roundNumber)));
     roundId = round?.id ?? null;
+    currentPass = round?.currentPass ?? null;
   }
 
-  return NextResponse.json({ status: room.status, roundId });
+  return NextResponse.json({ status: room.status, roundId, currentPass });
 }

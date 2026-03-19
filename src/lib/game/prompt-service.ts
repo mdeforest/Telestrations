@@ -77,7 +77,7 @@ export function createPromptService(db: any) {
       .from(books)
       .where(and(eq(books.roundId, roundId), eq(books.originalPrompt, "")));
 
-    // 6. If everyone has selected, transition the room to active
+    // 6. If everyone has selected, transition the room to active and start the timer
     if (count === 0) {
       const [round] = await db
         .select()
@@ -88,6 +88,13 @@ export function createPromptService(db: any) {
         .update(rooms)
         .set({ status: "active", currentRound: round.roundNumber })
         .where(eq(rooms.id, round.roomId))
+        .returning();
+
+      // Record when pass 1 begins so clients can derive the countdown
+      await db
+        .update(rounds)
+        .set({ timerStartedAt: new Date() })
+        .where(eq(rounds.id, roundId))
         .returning();
     }
 

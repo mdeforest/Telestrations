@@ -28,12 +28,15 @@ export default async function LobbyPage({ params }: Props) {
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
   let initialRoundId: string | undefined;
-  if (room.status === "prompts") {
-    const [firstRound] = await db
-      .select({ id: rounds.id })
+  let initialTimerStartedAt: string | null = null;
+
+  if (room.status === "prompts" || room.status === "active") {
+    const [currentRound] = await db
+      .select({ id: rounds.id, timerStartedAt: rounds.timerStartedAt })
       .from(rounds)
-      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
-    initialRoundId = firstRound?.id;
+      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, Math.max(room.currentRound, 1))));
+    initialRoundId = currentRound?.id;
+    initialTimerStartedAt = currentRound?.timerStartedAt?.toISOString() ?? null;
   }
 
   return (
@@ -56,11 +59,13 @@ export default async function LobbyPage({ params }: Props) {
         code={upperCode}
         initialPlayers={playerList}
         hostPlayerId={room.hostPlayerId ?? ""}
+        playerId={playerId ?? ""}
         isHost={isHost}
         initialNumRounds={room.numRounds}
         initialScoringMode={room.scoringMode}
         initialStatus={room.status}
         initialRoundId={initialRoundId}
+        initialTimerStartedAt={initialTimerStartedAt}
       />
     </main>
   );
