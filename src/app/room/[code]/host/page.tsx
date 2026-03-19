@@ -23,18 +23,26 @@ export default async function HostLobbyPage({ params }: Props) {
   playerList.sort((a, b) => a.seatOrder - b.seatOrder);
 
   let initialSelectedCount = 0;
-  if (room.status === "prompts") {
-    const [firstRound] = await db
-      .select({ id: rounds.id })
-      .from(rounds)
-      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, 1)));
+  let initialRoundId: string | undefined;
+  let initialTimerStartedAt: string | null = null;
 
-    if (firstRound) {
-      const [counts] = await db
-        .select({ selected: sql<number>`cast(count(*) as integer)` })
-        .from(books)
-        .where(and(eq(books.roundId, firstRound.id), ne(books.originalPrompt, "")));
-      initialSelectedCount = counts.selected;
+  if (room.status === "prompts" || room.status === "active") {
+    const [currentRound] = await db
+      .select({ id: rounds.id, timerStartedAt: rounds.timerStartedAt })
+      .from(rounds)
+      .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, Math.max(room.currentRound, 1))));
+
+    if (currentRound) {
+      initialRoundId = currentRound.id;
+      initialTimerStartedAt = currentRound.timerStartedAt?.toISOString() ?? null;
+
+      if (room.status === "prompts") {
+        const [counts] = await db
+          .select({ selected: sql<number>`cast(count(*) as integer)` })
+          .from(books)
+          .where(and(eq(books.roundId, currentRound.id), ne(books.originalPrompt, "")));
+        initialSelectedCount = counts.selected;
+      }
     }
   }
 
@@ -49,6 +57,8 @@ export default async function HostLobbyPage({ params }: Props) {
         hostPlayerId={room.hostPlayerId ?? ""}
         initialStatus={room.status}
         initialSelectedCount={initialSelectedCount}
+        initialRoundId={initialRoundId}
+        initialTimerStartedAt={initialTimerStartedAt}
       />
     </main>
   );
