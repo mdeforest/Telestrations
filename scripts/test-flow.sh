@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
-# test-prompt-flow.sh
+# test-flow.sh
 #
 # Interactive test harness: you are the host + 4th player.
-# Three bots join your room, select prompts, and submit drawings each pass.
+# Three bots join your room, select prompts, and submit entries (drawing or guess)
+# each pass, alternating per the entryType rule (odd pass = drawing, even = guess).
 #
 # Usage:
-#   ./scripts/test-prompt-flow.sh [BASE_URL]
+#   ./scripts/test-flow.sh [BASE_URL]
 #
 # Defaults to http://localhost:3000
 
 set -euo pipefail
 
-BASE="${1:-http://192.168.86.35:3000}"
+BASE="${1:-http://localhost:3000}"
 JARS=(/tmp/tele_bot1.txt /tmp/tele_bot2.txt /tmp/tele_bot3.txt)
 NAMES=("Alice" "Bob" "Carol")
 # 4 players → chainLength = 4 passes per round (even player count)
 CHAIN_LENGTH=4
+
+EMPTY_STROKES="[]"
+BOT_GUESS_TEXT="A squiggly thing"
 
 cleanup() { rm -f "${JARS[@]}"; }
 trap cleanup EXIT
@@ -137,20 +141,29 @@ for attempt in $(seq 1 15); do
   sleep 1
 done
 
-# ── Step 7: drawing passes ───────────────────────────────────────────────────
-# With 4 players chainLength = 4 passes.
-# For each pass: bots look up their entry and submit an empty drawing,
-# then wait for the human to submit from the browser.
-
-EMPTY_STROKES="[]"
+# ── Step 7: passes (alternating drawing / guess) ─────────────────────────────
+# Pass 1: drawing  (odd)
+# Pass 2: guess    (even)
+# Pass 3: drawing  (odd)
+# Pass 4: guess    (even)
+#
+# entry type is determined by passNumber % 2: odd → drawing, even → guess
+# The my-entry response includes a `type` field — bots use that to decide
+# what to submit rather than computing it locally.
 
 for pass in $(seq 1 $CHAIN_LENGTH); do
+  # Determine canonical type for display purposes
+  if (( pass % 2 == 1 )); then
+    PHASE_LABEL="DRAWING"
+  else
+    PHASE_LABEL="GUESSING"
+  fi
+
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  PASS $pass of $CHAIN_LENGTH"
+  echo "  PASS $pass of $CHAIN_LENGTH — $PHASE_LABEL PHASE"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  # Bots submit their entries for this pass
   BOT_SUBMITTED=0
   for i in 0 1 2; do
     ENTRY_RESP=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
@@ -159,6 +172,7 @@ for pass in $(seq 1 $CHAIN_LENGTH); do
     BOOK_ID=$(json_get "$ENTRY_RESP" "bookId")
     PASS_NUM=$(json_get "$ENTRY_RESP" "passNumber")
     ALREADY_SUB=$(json_get "$ENTRY_RESP" "alreadySubmitted")
+    ENTRY_TYPE=$(json_get "$ENTRY_RESP" "type")
 
     if [[ "$ALREADY_SUB" == "True" || "$ALREADY_SUB" == "true" ]]; then
       ok "${NAMES[$i]} already submitted for pass $pass"
@@ -171,14 +185,23 @@ for pass in $(seq 1 $CHAIN_LENGTH); do
       continue
     fi
 
+    # Build payload based on entry type returned by the server
+    if [[ "$ENTRY_TYPE" == "guess" ]]; then
+      PAYLOAD="{\"bookId\":\"$BOOK_ID\",\"passNumber\":$PASS_NUM,\"type\":\"guess\",\"content\":\"$BOT_GUESS_TEXT\"}"
+      SUBMIT_LABEL="guess"
+    else
+      PAYLOAD="{\"bookId\":\"$BOOK_ID\",\"passNumber\":$PASS_NUM,\"type\":\"drawing\",\"content\":\"$EMPTY_STROKES\"}"
+      SUBMIT_LABEL="drawing"
+    fi
+
     SUBMIT_RESP=$(curl -sf -c "${JARS[$i]}" -b "${JARS[$i]}" \
       -X POST "$BASE/api/entries" \
       -H "Content-Type: application/json" \
-      -d "{\"bookId\":\"$BOOK_ID\",\"passNumber\":$PASS_NUM,\"type\":\"drawing\",\"content\":\"$EMPTY_STROKES\"}" \
+      -d "$PAYLOAD" \
       2>/dev/null || echo "{}")
 
     if echo "$SUBMIT_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if 'error' not in d else 1)" 2>/dev/null; then
-      ok "${NAMES[$i]} submitted drawing for pass $pass (book $BOOK_ID)"
+      ok "${NAMES[$i]} submitted $SUBMIT_LABEL for pass $pass (book $BOOK_ID)"
       BOT_SUBMITTED=$((BOT_SUBMITTED + 1))
     else
       ERR=$(json_get "$SUBMIT_RESP" "error")
@@ -188,7 +211,7 @@ for pass in $(seq 1 $CHAIN_LENGTH); do
 
   if [[ $pass -lt $CHAIN_LENGTH ]]; then
     echo ""
-    echo "  $BOT_SUBMITTED/3 bots submitted. Submit YOUR drawing in the browser, then press Enter."
+    echo "  $BOT_SUBMITTED/3 bots submitted. Submit YOUR $PHASE_LABEL entry in the browser, then press Enter."
     read -r -p "  [Enter after you submit] "
 
     # Poll for pass to advance
@@ -209,12 +232,37 @@ for pass in $(seq 1 $CHAIN_LENGTH); do
     done
   else
     echo ""
-    echo "  $BOT_SUBMITTED/3 bots submitted. Submit YOUR final drawing in the browser."
+    echo "  $BOT_SUBMITTED/3 bots submitted. Submit YOUR final $PHASE_LABEL entry in the browser."
     echo "  The round should complete and the game will advance."
   fi
 done
 
+# ── Step 8: verify final status ──────────────────────────────────────────────
+
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  All $CHAIN_LENGTH passes complete. Drawing phase done!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log "Waiting for game to advance after final pass…"
+for attempt in $(seq 1 15); do
+  STATUS_RESP=$(curl -sf "$BASE/api/rooms/$CODE" || true)
+  STATUS=$(json_get "$STATUS_RESP" "status")
+  if [[ "$STATUS" == "reveal" || "$STATUS" == "prompts" ]]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if [[ "$STATUS" == "reveal" ]]; then
+      echo "  Game complete → status: reveal ✓"
+    else
+      NEXT_ROUND_ID=$(json_get "$STATUS_RESP" "roundId")
+      echo "  Round complete → advancing to next round (status: prompts, roundId: $NEXT_ROUND_ID) ✓"
+    fi
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    break
+  fi
+  if [[ $attempt -eq 15 ]]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  All $CHAIN_LENGTH passes submitted (status=$STATUS)."
+    echo "  If still 'active', submit your final entry in the browser."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    break
+  fi
+  sleep 1
+done
