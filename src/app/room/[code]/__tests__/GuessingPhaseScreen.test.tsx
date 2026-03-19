@@ -52,13 +52,13 @@ describe("GuessingPhaseScreen", () => {
 
   it("renders a submit button", () => {
     renderGuessing();
-    expect(screen.getByRole("button", { name: /submit/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /submit guess/i })).toBeTruthy();
   });
 
   it("disables submit when entryInfo is not loaded (fetch pending)", () => {
     // Don't mock fetch — it will remain pending, keeping entryInfo null
     renderGuessing();
-    const btn = screen.getByRole("button", { name: /submit/i });
+    const btn = screen.getByRole("button", { name: /submit guess/i });
     expect(btn.hasAttribute("disabled")).toBe(true);
   });
 
@@ -81,11 +81,11 @@ describe("GuessingPhaseScreen", () => {
 
     // Wait for entryInfo to load → button becomes enabled
     await waitFor(() => {
-      const btn = screen.getByRole("button", { name: /submit/i });
+      const btn = screen.getByRole("button", { name: /submit guess/i });
       expect(btn.hasAttribute("disabled")).toBe(false);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    fireEvent.click(screen.getByRole("button", { name: /submit guess/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/waiting for others/i)).toBeTruthy();
@@ -112,10 +112,10 @@ describe("GuessingPhaseScreen", () => {
     fireEvent.change(screen.getByRole("textbox"), { target: { value: "a cat in a hat" } });
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /submit/i }).hasAttribute("disabled")).toBe(false);
+      expect(screen.getByRole("button", { name: /submit guess/i }).hasAttribute("disabled")).toBe(false);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+    fireEvent.click(screen.getByRole("button", { name: /submit guess/i }));
 
     await waitFor(() => {
       const submitCall = fetchMock.mock.calls[1];

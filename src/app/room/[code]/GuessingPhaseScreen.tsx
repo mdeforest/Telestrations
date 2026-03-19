@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
-import type { Stroke } from "@/components/DrawingCanvas";
+import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 
 const ROUND_DURATION_SECONDS = 60;
 
@@ -42,7 +42,11 @@ export function GuessingPhaseScreen({
     passNumber: number;
   } | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Parse incoming drawing strokes once so DrawingCanvas can replay them
+  const replayStrokes: Stroke[] = (() => {
+    if (!incomingDrawing) return [];
+    try { return JSON.parse(incomingDrawing) as Stroke[]; } catch { return []; }
+  })();
 
   // Countdown — recomputes every second from server-authoritative timerStartedAt
   useEffect(() => {
@@ -94,37 +98,6 @@ export function GuessingPhaseScreen({
     };
   }, [code, playerId]);
 
-  // Render incoming drawing on canvas (replay strokes)
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !incomingDrawing) return;
-
-    let strokes: Stroke[] = [];
-    try {
-      strokes = JSON.parse(incomingDrawing) as Stroke[];
-    } catch {
-      return;
-    }
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (const stroke of strokes) {
-      if (!stroke.points || stroke.points.length === 0) continue;
-      ctx.beginPath();
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = stroke.brushSize ?? 4;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) {
-        ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-      }
-      ctx.stroke();
-    }
-  }, [incomingDrawing]);
 
   const handleSubmit = useCallback(async () => {
     if (!entryInfo || !guess.trim()) return;
@@ -196,16 +169,12 @@ export function GuessingPhaseScreen({
         {timeLabel}
       </div>
 
-      {/* Incoming drawing — read-only canvas */}
-      <div className="w-full rounded-xl border overflow-hidden bg-white shadow-sm">
-        <canvas
-          ref={canvasRef}
-          width={360}
-          height={270}
-          className="w-full"
-          aria-label="Drawing to guess"
-        />
-      </div>
+      {/* Incoming drawing — read-only canvas via DrawingCanvas replay */}
+      <DrawingCanvas
+        onSubmit={() => {/* read-only; no submit */}}
+        replayStrokes={replayStrokes}
+        disabled
+      />
 
       <p className="text-sm text-gray-500 font-medium uppercase tracking-widest">
         What is this drawing?
