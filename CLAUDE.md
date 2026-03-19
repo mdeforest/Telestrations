@@ -6,9 +6,11 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #7 in PR #21 (branch `feat/drawing-canvas-issue-7`) — DrawingCanvas component complete. Mouse + touch drawing, brush size control, stroke serialization, replay. 56 Vitest tests (8 for canvas, with @testing-library/react + jsdom). Issue #6 (PR #20) merged. Issue #5 (PR #17, chain router) still open. Provision Neon + Ably and fill in `.env.local` before running.
+Issue #9 (Guessing Phase) in PR #24 (branch `feat/guessing-phase-issue-9`) — complete. 89 Vitest tests passing. Issues #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
 
-**New testing deps added:** `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom` — needed for React component tests. `vitest.config.ts` now includes the React plugin. Per-file jsdom override: `// @vitest-environment jsdom`.
+Key additions in issue #9: `GuessingPhaseScreen` (read-only canvas replay + text input + timer); `POST /api/entries` accepts `type: 'guess'`; entry-service round-completion detection (`roundComplete: boolean` from both `submitEntry` and `expirePass`); multi-round progression in the entries route (next round → `prompts`, final round → `reveal`); `my-entry` returns `type` + `incomingContent`; `LobbyPlayerList` routes on pass type.
+
+**Testing deps:** `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`. Per-file jsdom: `// @vitest-environment jsdom`. entry-service mocks use index-based `makeSelectSequence` — add new query responses when extending service methods or existing tests break.
 
 ## Stack
 
