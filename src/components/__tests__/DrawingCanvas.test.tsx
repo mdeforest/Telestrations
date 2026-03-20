@@ -137,6 +137,12 @@ describe("DrawingCanvas", () => {
     expect(strokes[0].points[0]).toEqual({ x: 50, y: 50 });
   });
 
+  it("hides the brush slider and submit button when readOnly is true", () => {
+    render(<DrawingCanvas onSubmit={vi.fn()} readOnly />);
+    expect(screen.queryByRole("slider")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
   it("accepts replayStrokes prop and renders without error", () => {
     const replay: Stroke[] = [
       { points: [{ x: 0, y: 0 }, { x: 100, y: 100 }], brushSize: 4 },

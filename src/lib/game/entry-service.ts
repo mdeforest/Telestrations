@@ -49,7 +49,7 @@ export function createEntryService(db: any) {
     passNumber: number,
     playerId: string,
     content: string
-  ): Promise<{ allSubmitted: boolean }> {
+  ): Promise<{ allSubmitted: boolean; roundComplete: boolean }> {
     // 1. Find the entry
     const [entry] = await db
       .select()
@@ -90,7 +90,7 @@ export function createEntryService(db: any) {
       .where(eq(books.id, bookId));
 
     if (!book) {
-      return { allSubmitted: false };
+      return { allSubmitted: false, roundComplete: false };
     }
 
     // Count unsubmitted entries for this pass, scoped to the round via join
@@ -109,37 +109,57 @@ export function createEntryService(db: any) {
     const count = pending?.count ?? 1;
 
     if (count === 0) {
-      // All submitted — advance pass
-      const [round] = await db
-        .select()
-        .from(rounds)
-        .where(eq(rounds.id, book.roundId));
+      // All submitted — check if there are more passes (entries for passNumber+1)
+      const [nextPassCount] = await db
+        .select({ count: sql<number>`cast(count(*) as integer)` })
+        .from(entries)
+        .innerJoin(books, eq(entries.bookId, books.id))
+        .where(
+          and(
+            eq(books.roundId, book.roundId),
+            eq(entries.passNumber, passNumber + 1)
+          )
+        );
 
-      if (round) {
-        await db
-          .update(rounds)
-          .set({ currentPass: round.currentPass + 1, timerStartedAt: new Date() })
-          .where(eq(rounds.id, round.id))
-          .returning();
+      const hasNextPass = (nextPassCount?.count ?? 0) > 0;
+
+      if (hasNextPass) {
+        // Advance to next pass
+        const [round] = await db
+          .select()
+          .from(rounds)
+          .where(eq(rounds.id, book.roundId));
+
+        if (round) {
+          await db
+            .update(rounds)
+            .set({ currentPass: round.currentPass + 1, timerStartedAt: new Date() })
+            .where(eq(rounds.id, round.id))
+            .returning();
+        }
+
+        return { allSubmitted: true, roundComplete: false };
       }
 
-      return { allSubmitted: true };
+      // No next pass — round is complete
+      return { allSubmitted: true, roundComplete: true };
     }
 
-    return { allSubmitted: false };
+    return { allSubmitted: false, roundComplete: false };
   }
+
 
   /**
    * Called when the 60-second timer expires. Blanks all unsubmitted entries for
    * the round's current pass, then advances the pass.
    */
-  async function expirePass(roundId: string): Promise<void> {
+  async function expirePass(roundId: string): Promise<{ roundComplete: boolean }> {
     const [round] = await db
       .select()
       .from(rounds)
       .where(eq(rounds.id, roundId));
 
-    if (!round) return;
+    if (!round) return { roundComplete: false };
 
     // 1. Load all book IDs in this round to scope the entry update
     const roundBooks = await db
@@ -165,12 +185,33 @@ export function createEntryService(db: any) {
         .returning();
     }
 
-    // 3. Advance the pass
+    // 3. Check if there are more passes (entries for currentPass + 1)
+    const [nextPassCount] = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(entries)
+      .innerJoin(books, eq(entries.bookId, books.id))
+      .where(
+        and(
+          eq(books.roundId, roundId),
+          eq(entries.passNumber, round.currentPass + 1)
+        )
+      );
+
+    const hasNextPass = (nextPassCount?.count ?? 0) > 0;
+
+    if (!hasNextPass) {
+      // Round is complete — don't advance currentPass
+      return { roundComplete: true };
+    }
+
+    // 4. Advance the pass
     await db
       .update(rounds)
       .set({ currentPass: round.currentPass + 1, timerStartedAt: new Date() })
       .where(eq(rounds.id, roundId))
       .returning();
+
+    return { roundComplete: false };
   }
 
   return { submitEntry, expirePass };

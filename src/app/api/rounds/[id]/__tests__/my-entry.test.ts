@@ -1,0 +1,138 @@
+// @vitest-environment node
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// ── Mock next/headers ─────────────────────────────────────────────────────────
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(),
+}));
+
+// ── Mock @/lib/db ─────────────────────────────────────────────────────────────
+vi.mock("@/lib/db", () => ({ db: {} }));
+
+// ── Mock Drizzle operators (used in the route but not relevant here) ──────────
+vi.mock("drizzle-orm", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return { ...actual };
+});
+
+import { cookies } from "next/headers";
+import { GET } from "../my-entry/route";
+import { NextRequest } from "next/server";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function makeRequest(): NextRequest {
+  return new NextRequest("http://localhost/api/rounds/round-1/my-entry");
+}
+
+function makeParams(id: string) {
+  return { params: Promise.resolve({ id }) };
+}
+
+function mockCookies(playerId: string | undefined) {
+  const get = vi.fn().mockReturnValue(playerId ? { value: playerId } : undefined);
+  (cookies as ReturnType<typeof vi.fn>).mockResolvedValue({ get });
+}
+
+// ── Test data ─────────────────────────────────────────────────────────────────
+
+const ROUND_ID = "round-1";
+const BOOK_ID = "book-1";
+const PLAYER_ID = "player-1";
+
+const ROUND_ROW = { id: ROUND_ID, roomId: "room-1", currentPass: 2 };
+
+const DRAWING_ENTRY = {
+  bookId: BOOK_ID,
+  passNumber: 1,
+  submittedAt: new Date(),
+  type: "drawing",
+  content: JSON.stringify([{ x: 0, y: 0 }]),
+};
+
+const GUESS_ENTRY = {
+  bookId: BOOK_ID,
+  passNumber: 2,
+  submittedAt: null,
+  type: "guess",
+  content: "",
+};
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("GET /api/rounds/[id]/my-entry", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    mockCookies(undefined);
+    const res = await GET(makeRequest(), makeParams(ROUND_ID));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns type for a drawing-pass entry", async () => {
+    mockCookies(PLAYER_ID);
+
+    const { db } = await import("@/lib/db");
+    const selectMock = vi.fn()
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([ROUND_ROW]),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              { bookId: BOOK_ID, passNumber: 1, submittedAt: null, type: "drawing" },
+            ]),
+          }),
+        }),
+      });
+
+    (db as unknown as Record<string, unknown>).select = selectMock;
+
+    const res = await GET(makeRequest(), makeParams(ROUND_ID));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.type).toBe("drawing");
+    expect(body.incomingContent).toBeNull();
+  });
+
+  it("returns type and incomingContent for a guess-pass entry", async () => {
+    mockCookies(PLAYER_ID);
+
+    const { db } = await import("@/lib/db");
+    const selectMock = vi.fn()
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([ROUND_ROW]),
+        }),
+      })
+      .mockReturnValueOnce({
+        // my-entry query (guess)
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([GUESS_ENTRY]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        // previous-pass content query
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([DRAWING_ENTRY]),
+        }),
+      });
+
+    (db as unknown as Record<string, unknown>).select = selectMock;
+
+    const res = await GET(makeRequest(), makeParams(ROUND_ID));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.type).toBe("guess");
+    expect(body.incomingContent).toBe(DRAWING_ENTRY.content);
+  });
+});

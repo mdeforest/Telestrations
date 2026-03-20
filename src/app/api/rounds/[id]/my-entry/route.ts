@@ -34,6 +34,7 @@ export async function GET(
       bookId: entries.bookId,
       passNumber: entries.passNumber,
       submittedAt: entries.submittedAt,
+      type: entries.type,
     })
     .from(entries)
     .innerJoin(books, eq(entries.bookId, books.id))
@@ -49,9 +50,26 @@ export async function GET(
     return NextResponse.json({ error: "No entry found for this player" }, { status: 404 });
   }
 
+  // For guess passes, load the previous pass's drawing so the UI can display it
+  let incomingContent: string | null = null;
+  if (myEntry.type === "guess" && myEntry.passNumber > 1) {
+    const [prevEntry] = await db
+      .select({ content: entries.content })
+      .from(entries)
+      .where(
+        and(
+          eq(entries.bookId, myEntry.bookId),
+          eq(entries.passNumber, myEntry.passNumber - 1)
+        )
+      );
+    incomingContent = prevEntry?.content ?? null;
+  }
+
   return NextResponse.json({
     bookId: myEntry.bookId,
     passNumber: myEntry.passNumber,
     alreadySubmitted: myEntry.submittedAt !== null,
+    type: myEntry.type,
+    incomingContent,
   });
 }

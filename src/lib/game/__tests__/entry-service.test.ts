@@ -176,16 +176,17 @@ describe("submitEntry", () => {
     expect(result.allSubmitted).toBe(false);
   });
 
-  it("returns allSubmitted: true and advances the pass when all entries are submitted", async () => {
+  it("returns allSubmitted: true and advances the pass when all entries are submitted (more passes remain)", async () => {
     const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
 
-    // Sequence: entry → book → count=0 → round
+    // Sequence: entry → book → count=0 → next-pass count (has more) → round
     const db = {
       select: makeSelectSequence([
         [ENTRY_ROW],
-        [BOOK_ROW],       // look up book to find roundId
-        [{ count: 0 }],   // no more pending entries — all submitted
-        [ROUND_ROW],      // load round row to know currentPass
+        [BOOK_ROW],         // look up book to find roundId
+        [{ count: 0 }],     // no more pending entries — all submitted
+        [{ count: 2 }],     // next pass has entries → more passes remain
+        [ROUND_ROW],        // load round row to know currentPass
       ]),
       update: updateMock,
     };
@@ -194,11 +195,75 @@ describe("submitEntry", () => {
     const result = await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, VALID_CONTENT);
 
     expect(result.allSubmitted).toBe(true);
+    expect(result.roundComplete).toBe(false);
     // Second update call advances currentPass and resets timer
     expect(setCalls[1]).toMatchObject({
       currentPass: PASS_NUMBER + 1,
     });
     expect(setCalls[1]?.timerStartedAt).toBeInstanceOf(Date);
+  });
+
+  it("returns roundComplete: true when all passes in the round are done", async () => {
+    const { mock: updateMock } = makeTrackingUpdateMock();
+
+    // Sequence: entry → book → count=0 → next-pass count=0 (no more passes)
+    const db = {
+      select: makeSelectSequence([
+        [ENTRY_ROW],
+        [BOOK_ROW],
+        [{ count: 0 }],   // all submitted for current pass
+        [{ count: 0 }],   // no entries for next pass → this was the last pass
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    const result = await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, VALID_CONTENT);
+
+    expect(result.allSubmitted).toBe(true);
+    expect(result.roundComplete).toBe(true);
+  });
+
+  it("does not advance currentPass when the round is complete", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [ENTRY_ROW],
+        [BOOK_ROW],
+        [{ count: 0 }],
+        [{ count: 0 }],   // last pass
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, VALID_CONTENT);
+
+    // Only one update (the content save) — no pass-advance update
+    expect(setCalls).toHaveLength(1);
+    expect(setCalls[0]).toMatchObject({ content: VALID_CONTENT });
+  });
+
+  it("accepts guess-type entries the same as drawing entries", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const guessEntry = { ...ENTRY_ROW, type: "guess" as const };
+    const db = {
+      select: makeSelectSequence([
+        [guessEntry],
+        [BOOK_ROW],
+        [{ count: 1 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    const guessContent = "a friendly cat";
+    const result = await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, guessContent);
+
+    expect(setCalls[0]).toMatchObject({ content: guessContent });
+    expect(result.allSubmitted).toBe(false);
   });
 });
 
@@ -210,8 +275,9 @@ describe("expirePass", () => {
 
     const db = {
       select: makeSelectSequence([
-        [ROUND_ROW],  // load round
-        [BOOK_ROW],   // load books in the round (for round-scoped blank)
+        [ROUND_ROW],      // load round
+        [BOOK_ROW],       // load books in the round (for round-scoped blank)
+        [{ count: 2 }],   // next pass has entries
       ]),
       update: updateMock,
     };
@@ -223,13 +289,14 @@ describe("expirePass", () => {
     expect(setCalls[0]).toMatchObject({ isBlank: true });
   });
 
-  it("advances the pass after blanking", async () => {
+  it("advances the pass after blanking when more passes remain", async () => {
     const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
 
     const db = {
       select: makeSelectSequence([
-        [ROUND_ROW],  // load round
-        [BOOK_ROW],   // load books in the round
+        [ROUND_ROW],      // load round
+        [BOOK_ROW],       // load books in the round
+        [{ count: 2 }],   // next pass has entries → advance
       ]),
       update: updateMock,
     };
@@ -251,6 +318,7 @@ describe("expirePass", () => {
       select: makeSelectSequence([
         [ROUND_ROW],  // load round
         [],           // no books in this round
+        [{ count: 2 }],  // next pass has entries
       ]),
       update: updateMock,
     };
@@ -261,5 +329,61 @@ describe("expirePass", () => {
     // Only the round-advance update should happen, not the entry-blank update
     expect(setCalls).toHaveLength(1);
     expect(setCalls[0]).toMatchObject({ currentPass: PASS_NUMBER + 1 });
+  });
+
+  it("returns roundComplete: false when more passes remain after expiry", async () => {
+    const { mock: updateMock } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [ROUND_ROW],
+        [BOOK_ROW],
+        [{ count: 2 }],  // next pass has entries
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    const result = await service.expirePass(ROUND_ID);
+
+    expect(result.roundComplete).toBe(false);
+  });
+
+  it("returns roundComplete: true when the expired pass was the last pass", async () => {
+    const { mock: updateMock } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [ROUND_ROW],
+        [BOOK_ROW],
+        [{ count: 0 }],  // no entries for next pass → last pass
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    const result = await service.expirePass(ROUND_ID);
+
+    expect(result.roundComplete).toBe(true);
+  });
+
+  it("does not advance currentPass when the expired pass was the last pass", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [ROUND_ROW],
+        [BOOK_ROW],
+        [{ count: 0 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.expirePass(ROUND_ID);
+
+    // Only the blank-entries update — no pass-advance since round is done
+    expect(setCalls).toHaveLength(1);
+    expect(setCalls[0]).toMatchObject({ isBlank: true });
   });
 });

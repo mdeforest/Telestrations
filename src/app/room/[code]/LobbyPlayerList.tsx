@@ -5,6 +5,7 @@ import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { PromptSelectionScreen } from "./PromptSelectionScreen";
 import { DrawingPhaseScreen } from "./DrawingPhaseScreen";
+import { GuessingPhaseScreen } from "./GuessingPhaseScreen";
 
 interface Player {
   id: string;
@@ -46,6 +47,8 @@ export function LobbyPlayerList({
   const [status, setStatus] = useState(initialStatus);
   const [roundId, setRoundId] = useState(initialRoundId ?? "");
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(initialTimerStartedAt);
+  const [passType, setPassType] = useState<"drawing" | "guess" | null>(null);
+  const [incomingDrawing, setIncomingDrawing] = useState<string | null>(null);
 
   const canStart = playerList.length >= 4;
 
@@ -72,6 +75,12 @@ export function LobbyPlayerList({
       setStatus(newStatus);
       if (newRoundId) setRoundId(newRoundId);
       if (newTimer !== undefined) setTimerStartedAt(newTimer);
+      // Reset pass type whenever we leave the active phase so the next round
+      // doesn't briefly show the wrong phase screen before my-entry resolves.
+      if (newStatus !== "active") {
+        setPassType(null);
+        setIncomingDrawing(null);
+      }
     });
 
     return () => {
@@ -79,6 +88,20 @@ export function LobbyPlayerList({
       statusCh.unsubscribe();
     };
   }, [code]);
+
+  // When the game is active, load the current pass type from my-entry.
+  // Re-runs when roundId changes (next round) or on pass-advanced (reload resets state).
+  useEffect(() => {
+    if (status !== "active" || !roundId) return;
+
+    fetch(`/api/rounds/${roundId}/my-entry`)
+      .then((r) => r.json())
+      .then((data: { type?: "drawing" | "guess"; incomingContent?: string | null }) => {
+        if (data.type) setPassType(data.type);
+        setIncomingDrawing(data.incomingContent ?? null);
+      })
+      .catch(() => {/* non-fatal — defaults to drawing */});
+  }, [status, roundId]);
 
   async function handleStart() {
     setStarting(true);
@@ -105,6 +128,17 @@ export function LobbyPlayerList({
   }
 
   if (status === "active" && roundId) {
+    if (passType === "guess") {
+      return (
+        <GuessingPhaseScreen
+          code={code}
+          roundId={roundId}
+          playerId={playerId}
+          timerStartedAt={timerStartedAt}
+          incomingDrawing={incomingDrawing}
+        />
+      );
+    }
     return (
       <DrawingPhaseScreen
         code={code}
