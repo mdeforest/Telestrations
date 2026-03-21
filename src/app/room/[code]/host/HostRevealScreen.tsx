@@ -29,6 +29,43 @@ interface Props {
   initialEntryIndex: number;
 }
 
+/** Single step in the chain timeline: prompt → drawing → guess → … */
+function ChainStep({
+  label,
+  content,
+  isActive,
+  isFuture,
+}: {
+  label: string;
+  content: string;
+  isActive: boolean;
+  isFuture: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col items-center gap-1 transition-opacity ${
+        isFuture ? "opacity-20" : "opacity-100"
+      }`}
+    >
+      <div
+        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors max-w-[120px] text-center truncate ${
+          isActive
+            ? "bg-white text-gray-950 border-white"
+            : "bg-gray-800 text-gray-300 border-gray-700"
+        }`}
+        title={content}
+      >
+        {content.length > 16 ? content.slice(0, 14) + "…" : content}
+      </div>
+      <p className="text-xs text-gray-500 truncate max-w-[120px] text-center">{label}</p>
+    </div>
+  );
+}
+
+function ChainArrow() {
+  return <span className="text-gray-700 text-lg self-center pb-4">→</span>;
+}
+
 export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: Props) {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookIndex, setBookIndex] = useState(initialBookIndex);
@@ -85,7 +122,7 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gray-950">
         <p className="text-gray-400 text-lg">Loading reveal…</p>
       </div>
     );
@@ -93,7 +130,7 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
 
   if (finished || !currentBook || !currentEntry) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-6">
         <div className="text-8xl">🎉</div>
         <h1 className="text-5xl font-black">Game Over!</h1>
         <p className="text-xl text-gray-500">Thanks for playing</p>
@@ -109,39 +146,30 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
       {/* Top bar — book progress */}
       <header className="flex items-center justify-between px-8 py-4 border-b border-gray-800">
         <div>
-          <p className="text-xs text-gray-400 uppercase tracking-widest">Book</p>
+          <p className="text-xs text-gray-400 uppercase tracking-widest">
+            Book {bookIndex + 1} of {totalBooks}
+          </p>
           <p className="text-2xl font-bold">
             {currentBook.ownerNickname}&apos;s story
           </p>
-          <p className="text-sm text-gray-400">
-            Prompt: <span className="text-white font-medium">&ldquo;{currentBook.originalPrompt}&rdquo;</span>
-          </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase tracking-widest">Progress</p>
-          <p className="text-lg font-mono">
-            {bookIndex + 1} / {totalBooks}
-          </p>
-          <p className="text-sm text-gray-400">
-            Entry {entryIndex + 1} of {totalEntries}
-          </p>
+        <div className="text-right text-sm text-gray-400">
+          Entry {entryIndex + 1} of {totalEntries}
         </div>
       </header>
 
       {/* Main entry display */}
-      <main className="flex-1 flex flex-col items-center justify-center gap-8 px-8 py-12">
+      <main className="flex-1 flex flex-col items-center justify-center gap-6 px-8 py-8">
         {/* Author badge */}
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800 border border-gray-700">
           <span className="w-2 h-2 rounded-full bg-blue-400" />
-          <span className="text-sm font-medium">
-            {currentEntry.authorNickname}
-          </span>
+          <span className="text-sm font-medium">{currentEntry.authorNickname}</span>
           <span className="text-xs text-gray-400">
             {currentEntry.type === "drawing" ? "drew" : "guessed"}
           </span>
         </div>
 
-        {/* Entry content */}
+        {/* Entry content — full-screen focal point */}
         {currentEntry.type === "drawing" ? (
           <div className="w-full max-w-xl">
             <DrawingCanvas
@@ -151,7 +179,7 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
             />
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
             <p className="text-xs text-gray-400 uppercase tracking-widest">They guessed…</p>
             <p className="text-6xl font-black text-center max-w-2xl leading-tight">
               &ldquo;{currentEntry.content}&rdquo;
@@ -160,26 +188,54 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
         )}
       </main>
 
-      {/* Entry progress dots */}
-      <div className="flex justify-center gap-3 pb-6">
-        {currentBook.entries.map((_, i) => (
-          <span
-            key={i}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              i === entryIndex ? "bg-white" : i < entryIndex ? "bg-gray-500" : "bg-gray-700"
-            }`}
+      {/* Chain timeline — prompt → entries revealed so far */}
+      <div className="px-8 py-4 border-t border-gray-800">
+        <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 text-center">
+          Chain so far
+        </p>
+        <div className="flex items-start justify-center gap-2 overflow-x-auto pb-1">
+          {/* Original prompt */}
+          <ChainStep
+            label={`📝 ${currentBook.ownerNickname}`}
+            content={`"${currentBook.originalPrompt}"`}
+            isActive={false}
+            isFuture={false}
           />
-        ))}
+
+          {/* Each entry — active = current, future = not yet revealed */}
+          {currentBook.entries.map((entry, i) => (
+            <>
+              <ChainArrow key={`arrow-${entry.id}`} />
+              <ChainStep
+                key={entry.id}
+                label={`${entry.type === "drawing" ? "🎨" : "💬"} ${entry.authorNickname}`}
+                content={
+                  entry.type === "drawing"
+                    ? "(drawing)"
+                    : `"${entry.content}"`
+                }
+                isActive={i === entryIndex}
+                isFuture={i > entryIndex}
+              />
+            </>
+          ))}
+        </div>
       </div>
 
-      {/* Advance button — stays fixed at bottom */}
-      <footer className="px-8 pb-8 flex justify-center">
+      {/* Advance button */}
+      <footer className="px-8 pb-8 pt-4 flex justify-center">
         <button
           onClick={handleAdvance}
           disabled={advancing}
           className="px-12 py-4 rounded-2xl text-xl font-bold bg-white text-gray-950 disabled:opacity-50 hover:bg-gray-100 transition-colors shadow-lg"
         >
-          {advancing ? "…" : entryIndex + 1 < totalEntries ? "Next Entry →" : bookIndex + 1 < totalBooks ? "Next Book →" : "Finish"}
+          {advancing
+            ? "…"
+            : entryIndex + 1 < totalEntries
+            ? "Next Entry →"
+            : bookIndex + 1 < totalBooks
+            ? "Next Book →"
+            : "Finish"}
         </button>
       </footer>
     </div>
