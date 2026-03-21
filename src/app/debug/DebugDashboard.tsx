@@ -158,14 +158,24 @@ export function DebugDashboard() {
           {/* Player cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
             {session.players.map((p) => (
-              <div key={p.playerId} className="border rounded-lg p-3 bg-white">
-                <p className="font-bold text-sm truncate">
-                  {p.nickname}
-                  {p.isHost && (
-                    <span className="ml-1 text-xs text-blue-600 font-normal">(Host)</span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">{p.screen}</p>
+              <div key={p.playerId} className="border rounded-lg p-3 bg-white flex flex-col gap-2">
+                <div>
+                  <p className="font-bold text-sm truncate">
+                    {p.nickname}
+                    {p.isHost && (
+                      <span className="ml-1 text-xs text-blue-600 font-normal">(Host)</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{p.screen}</p>
+                </div>
+                <a
+                  href={`/api/debug/session/${session.sessionId}/as-player/${p.playerId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-center px-2 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  Open as {p.nickname}
+                </a>
               </div>
             ))}
           </div>
