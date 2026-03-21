@@ -6,6 +6,7 @@ import { channels } from "@/lib/realtime/channels";
 import { PromptSelectionScreen } from "./PromptSelectionScreen";
 import { DrawingPhaseScreen } from "./DrawingPhaseScreen";
 import { GuessingPhaseScreen } from "./GuessingPhaseScreen";
+import { PlayerRevealScreen } from "./PlayerRevealScreen";
 
 interface Player {
   id: string;
@@ -24,6 +25,8 @@ interface Props {
   initialStatus?: string;
   initialRoundId?: string;
   initialTimerStartedAt?: string | null;
+  initialRevealBookIndex?: number;
+  initialRevealEntryIndex?: number;
 }
 
 export function LobbyPlayerList({
@@ -37,6 +40,8 @@ export function LobbyPlayerList({
   initialStatus = "lobby",
   initialRoundId,
   initialTimerStartedAt = null,
+  initialRevealBookIndex = 0,
+  initialRevealEntryIndex = 0,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [currentHostId, setCurrentHostId] = useState(hostPlayerId);
@@ -49,6 +54,8 @@ export function LobbyPlayerList({
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(initialTimerStartedAt);
   const [passType, setPassType] = useState<"drawing" | "guess" | null>(null);
   const [incomingDrawing, setIncomingDrawing] = useState<string | null>(null);
+  const [revealBookIndex, setRevealBookIndex] = useState(initialRevealBookIndex);
+  const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
 
   const canStart = playerList.length >= 4;
 
@@ -83,9 +90,21 @@ export function LobbyPlayerList({
       }
     });
 
+    const revealCh = ably.channels.get(channels.revealAdvance(code));
+    revealCh.subscribe("reveal:advance", (msg) => {
+      const { revealBookIndex: bIdx, revealEntryIndex: eIdx } = msg.data as {
+        revealBookIndex: number;
+        revealEntryIndex: number;
+        finished: boolean;
+      };
+      setRevealBookIndex(bIdx);
+      setRevealEntryIndex(eIdx);
+    });
+
     return () => {
       playersCh.unsubscribe();
       statusCh.unsubscribe();
+      revealCh.unsubscribe();
     };
   }, [code]);
 
@@ -125,6 +144,18 @@ export function LobbyPlayerList({
 
   if (status === "prompts" && roundId) {
     return <PromptSelectionScreen roundId={roundId} />;
+  }
+
+  if (status === "reveal" || status === "finished") {
+    return (
+      <PlayerRevealScreen
+        code={code}
+        playerId={playerId}
+        isHost={isHost}
+        initialBookIndex={revealBookIndex}
+        initialEntryIndex={revealEntryIndex}
+      />
+    );
   }
 
   if (status === "active" && roundId) {

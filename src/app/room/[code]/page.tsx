@@ -66,6 +66,8 @@ export default async function LobbyPage({ params }: Props) {
         initialStatus={room.status}
         initialRoundId={initialRoundId}
         initialTimerStartedAt={initialTimerStartedAt}
+        initialRevealBookIndex={room.revealBookIndex}
+        initialRevealEntryIndex={room.revealEntryIndex}
       />
     </main>
   );
