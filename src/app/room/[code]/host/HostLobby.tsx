@@ -39,6 +39,32 @@ export function HostLobby({
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
+  const [numRounds, setNumRounds] = useState(3);
+  const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">("friendly");
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  const canStart = playerList.length >= 4;
+
+  async function handleStart() {
+    setStarting(true);
+    setStartError(null);
+    try {
+      const res = await fetch(`/api/rooms/${code}/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numRounds, scoringMode }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setStartError(data.error ?? "Failed to start game");
+        setStarting(false);
+      }
+    } catch {
+      setStartError("Network error");
+      setStarting(false);
+    }
+  }
 
   // Compute connect URL client-side so it reflects window.location (the real IP
   // the browser used), not the Next.js server-side host which normalises to localhost.
@@ -154,9 +180,50 @@ export function HostLobby({
         )}
       </section>
 
-      <p className="text-sm text-gray-400 text-center">
-        Waiting for the host to start the game.
-      </p>
+      <section className="flex flex-col gap-4 border-t pt-4">
+        <div className="flex items-center justify-between">
+          <label htmlFor="host-rounds" className="font-medium">Rounds</label>
+          <select
+            id="host-rounds"
+            value={numRounds}
+            onChange={(e) => setNumRounds(Number(e.target.value))}
+            className="border rounded px-3 py-1.5 text-base bg-white"
+          >
+            {[3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Scoring</span>
+          <div className="flex rounded-lg border overflow-hidden text-sm">
+            {(["friendly", "competitive"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setScoringMode(mode)}
+                className={`px-4 py-1.5 capitalize transition-colors ${
+                  scoringMode === mode
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {startError && <p className="text-sm text-red-600">{startError}</p>}
+
+        <button
+          onClick={handleStart}
+          disabled={!canStart || starting}
+          className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+        >
+          {starting ? "Starting…" : "Start Game"}
+        </button>
+      </section>
     </div>
   );
 }

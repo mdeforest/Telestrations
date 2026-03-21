@@ -73,7 +73,7 @@ export default function Home() {
             placeholder="Room code"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            maxLength={4}
+            maxLength={6}
             className="border rounded-xl px-4 py-3 text-lg w-28 uppercase tracking-widest font-mono"
             onKeyDown={(e) => e.key === "Enter" && handleJoin()}
           />
