@@ -72,12 +72,13 @@ describe("GET /api/debug/session/[id]/as-player/[playerId]", () => {
     expect(res.status).toBe(404);
   });
 
-  it("redirects to /room/[code] with playerId cookie set", async () => {
+  it("redirects to /room/[code]?debugPlayerId=... without setting a cookie", async () => {
     mocks.getSession.mockReturnValue(FAKE_SESSION);
     const res = await GET(makeReq("sess-1", "p1"), makeParams("sess-1", "p1"));
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toContain("/room/ABCDE");
-    const cookie = res.headers.get("set-cookie");
-    expect(cookie).toContain("playerId=p1");
+    const location = res.headers.get("location") ?? "";
+    expect(location).toContain("/room/ABCDE");
+    expect(location).toContain("debugPlayerId=p1");
+    expect(res.headers.get("set-cookie")).toBeNull();
   });
 });

@@ -4,12 +4,12 @@ import { NextRequest } from "next/server";
 // ── Hoisted shared mock state ──────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
-  cookieGet: vi.fn(),
+  getPlayerId: vi.fn(),
   castVote: vi.fn(),
 }));
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: mocks.cookieGet }),
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mocks.getPlayerId,
 }));
 
 vi.mock("@/lib/game/vote-service", () => ({
@@ -59,25 +59,25 @@ describe("POST /api/votes", () => {
   });
 
   it("returns 401 when playerId cookie is missing", async () => {
-    mocks.cookieGet.mockReturnValue(undefined);
+    mocks.getPlayerId.mockResolvedValue(undefined);
     const res = await POST(makeReq(VALID_BODY));
     expect(res.status).toBe(401);
   });
 
   it("returns 400 when required fields are missing", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     const res = await POST(makeReq({ bookId: "book-1" })); // missing entryId + voteType
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when voteType is invalid", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     const res = await POST(makeReq({ ...VALID_BODY, voteType: "wrong_type" }));
     expect(res.status).toBe(400);
   });
 
   it("returns 201 with the vote record on success", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.castVote.mockResolvedValue(VOTE_ROW);
 
     const res = await POST(makeReq(VALID_BODY));
@@ -88,7 +88,7 @@ describe("POST /api/votes", () => {
   });
 
   it("calls castVote with correct arguments", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.castVote.mockResolvedValue(VOTE_ROW);
 
     await POST(makeReq(VALID_BODY));
@@ -102,7 +102,7 @@ describe("POST /api/votes", () => {
   });
 
   it("returns 409 when the player votes for their own entry", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     const { SelfVoteError } = await import("@/lib/game/vote-service");
     mocks.castVote.mockRejectedValue(new SelfVoteError());
 
@@ -111,7 +111,7 @@ describe("POST /api/votes", () => {
   });
 
   it("returns 404 when the entry does not belong to the book", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     const { EntryNotInBookError } = await import("@/lib/game/vote-service");
     mocks.castVote.mockRejectedValue(new EntryNotInBookError());
 

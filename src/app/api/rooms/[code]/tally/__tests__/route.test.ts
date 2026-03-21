@@ -4,14 +4,14 @@ import { NextRequest } from "next/server";
 // ── Hoisted shared mock state ──────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
-  cookieGet: vi.fn(),
+  getPlayerId: vi.fn(),
   dbSelect: vi.fn(),
   tallyVotes: vi.fn(),
   ablyPublish: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: mocks.cookieGet }),
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mocks.getPlayerId,
 }));
 
 vi.mock("@/lib/db", () => ({ db: { select: mocks.dbSelect } }));
@@ -64,13 +64,13 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("returns 401 when playerId cookie is missing", async () => {
-    mocks.cookieGet.mockReturnValue(undefined);
+    mocks.getPlayerId.mockResolvedValue(undefined);
     const res = await POST(makeReq(), makeParams());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when the room does not exist", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({
@@ -83,7 +83,7 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("returns 403 when the caller is not the host", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "not-host" });
+    mocks.getPlayerId.mockResolvedValue("not-host");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({
@@ -96,7 +96,7 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("returns 409 when the room is not finished", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({
@@ -109,7 +109,7 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("calls tallyVotes with the room id on success", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({
@@ -133,7 +133,7 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("returns 200 with leaderboard data on success", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({
@@ -161,7 +161,7 @@ describe("POST /api/rooms/[code]/tally", () => {
   });
 
   it("publishes scoring:complete Ably event with leaderboard", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.dbSelect
       .mockImplementationOnce(() => ({
         from: vi.fn().mockReturnValue({

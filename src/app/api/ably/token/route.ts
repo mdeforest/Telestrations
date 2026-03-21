@@ -1,5 +1,5 @@
 import { getAblyRest } from "@/lib/realtime/server";
-import { cookies } from "next/headers";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 import { NextResponse } from "next/server";
 
 // Issues short-lived Ably tokens for browser clients.
@@ -7,8 +7,7 @@ import { NextResponse } from "next/server";
 // clientId is set to the player's ID (from cookie) so presence works.
 
 export async function POST() {
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
+  const playerId = await getPlayerId();
 
   const ably = getAblyRest();
   const tokenRequest = await ably.auth.createTokenRequest({

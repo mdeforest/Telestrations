@@ -4,13 +4,13 @@ import { NextRequest } from "next/server";
 // ── Hoisted shared mock state ─────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
-  cookieGet: vi.fn(),
+  getPlayerId: vi.fn(),
   advanceReveal: vi.fn(),
   ablyPublish: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: mocks.cookieGet }),
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mocks.getPlayerId,
 }));
 
 vi.mock("@/lib/game/reveal-service", () => ({
@@ -58,13 +58,13 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
   });
 
   it("returns 401 when playerId cookie is missing", async () => {
-    mocks.cookieGet.mockReturnValue(undefined);
+    mocks.getPlayerId.mockResolvedValue(undefined);
     const res = await POST(makeReq(), makeParams());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when the room does not exist", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     const { RoomNotFoundError } = await import("@/lib/game/reveal-service");
     mocks.advanceReveal.mockRejectedValue(new RoomNotFoundError("ABCDEF"));
 
@@ -73,7 +73,7 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
   });
 
   it("returns 403 when the caller is not the host", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-2" });
+    mocks.getPlayerId.mockResolvedValue("player-2");
     const { NotHostError } = await import("@/lib/game/reveal-service");
     mocks.advanceReveal.mockRejectedValue(new NotHostError());
 
@@ -82,7 +82,7 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
   });
 
   it("returns 200 with updated indices on success", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.advanceReveal.mockResolvedValue({
       revealBookIndex: 0,
       revealEntryIndex: 1,
@@ -101,7 +101,7 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
   });
 
   it("publishes reveal:advance Ably event with updated indices", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     mocks.advanceReveal.mockResolvedValue({
       revealBookIndex: 1,
       revealEntryIndex: 0,
@@ -118,7 +118,7 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
   });
 
   it("returns 409 when room is not in reveal phase", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    mocks.getPlayerId.mockResolvedValue("host-1");
     const { NotRevealPhaseError } = await import("@/lib/game/reveal-service");
     mocks.advanceReveal.mockRejectedValue(new NotRevealPhaseError());
 

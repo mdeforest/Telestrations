@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 
 interface PromptOption {
   id: string;
@@ -22,7 +23,7 @@ export function PromptSelectionScreen({ roundId, onSelected }: Props) {
 
   // Fetch prompt options on mount; skip to waiting screen if already selected
   useEffect(() => {
-    fetch(`/api/rounds/${roundId}/prompts`)
+    debugFetch(`/api/rounds/${roundId}/prompts`)
       .then((r) => r.json())
       .then((data: { options: PromptOption[]; alreadySelected: boolean }) => {
         if (data.alreadySelected) {
@@ -48,7 +49,7 @@ export function PromptSelectionScreen({ roundId, onSelected }: Props) {
     setError(null);
 
     try {
-      const res = await fetch(`/api/rounds/${roundId}/prompt`, {
+      const res = await debugFetch(`/api/rounds/${roundId}/prompt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ promptId }),

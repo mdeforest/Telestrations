@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import { books, rounds, rooms } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -14,8 +14,7 @@ import { getAblyRest } from "@/lib/realtime/server";
 import { channels } from "@/lib/realtime/channels";
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
+  const playerId = await getPlayerId();
 
   if (!playerId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -148,8 +147,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   // Timer expiry endpoint — called by a server-side scheduled job or Ably webhook
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
+  const playerId = await getPlayerId();
 
   if (!playerId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

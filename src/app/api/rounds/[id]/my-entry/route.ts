@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import { books, entries, rounds } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -16,8 +16,7 @@ export async function GET(
 ) {
   const { id: roundId } = await params;
 
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
+  const playerId = await getPlayerId();
 
   if (!playerId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

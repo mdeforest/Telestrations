@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ── Mock next/headers ─────────────────────────────────────────────────────────
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(),
+// ── Mock @/lib/debug/get-player-id ────────────────────────────────────────────
+const { mockGetPlayerId } = vi.hoisted(() => ({ mockGetPlayerId: vi.fn() }));
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mockGetPlayerId,
 }));
 
 // ── Mock @/lib/db ─────────────────────────────────────────────────────────────
@@ -15,7 +16,6 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   return { ...actual };
 });
 
-import { cookies } from "next/headers";
 import { GET } from "../my-entry/route";
 import { NextRequest } from "next/server";
 
@@ -30,8 +30,7 @@ function makeParams(id: string) {
 }
 
 function mockCookies(playerId: string | undefined) {
-  const get = vi.fn().mockReturnValue(playerId ? { value: playerId } : undefined);
-  (cookies as ReturnType<typeof vi.fn>).mockResolvedValue({ get });
+  mockGetPlayerId.mockResolvedValue(playerId);
 }
 
 // ── Test data ─────────────────────────────────────────────────────────────────

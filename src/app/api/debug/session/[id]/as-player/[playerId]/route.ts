@@ -28,7 +28,7 @@ export async function GET(
     return NextResponse.json({ error: "Player not in session" }, { status: 404 });
   }
 
-  const res = NextResponse.redirect(new URL(`/room/${session.roomCode}`, _req.url), 302);
-  res.cookies.set("playerId", playerId, { path: "/" });
-  return res;
+  const dest = new URL(`/room/${session.roomCode}`, _req.url);
+  dest.searchParams.set("debugPlayerId", playerId);
+  return NextResponse.redirect(dest, 302);
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
 import { HostDrawingScreen } from "./HostDrawingScreen";
@@ -59,7 +60,7 @@ export function HostLobby({
     setStarting(true);
     setStartError(null);
     try {
-      const res = await fetch(`/api/rooms/${code}/start`, {
+      const res = await debugFetch(`/api/rooms/${code}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ numRounds, scoringMode }),

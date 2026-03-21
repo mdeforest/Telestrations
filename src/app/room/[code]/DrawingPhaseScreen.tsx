@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 
@@ -53,7 +54,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
 
   // Load the player's own entry info (bookId + passNumber) for submission
   useEffect(() => {
-    fetch(`/api/rounds/${roundId}/my-entry`)
+    debugFetch(`/api/rounds/${roundId}/my-entry`)
       .then((r) => r.json())
       .then((data: { bookId?: string; passNumber?: number; alreadySubmitted?: boolean }) => {
         if (data.alreadySubmitted) {
@@ -92,7 +93,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
     setError(null);
 
     try {
-      const res = await fetch("/api/entries", {
+      const res = await debugFetch("/api/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
