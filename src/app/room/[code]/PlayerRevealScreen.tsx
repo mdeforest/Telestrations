@@ -49,11 +49,13 @@ export function PlayerRevealScreen({
   useEffect(() => {
     fetch(`/api/rooms/${code}/reveal/books`)
       .then((r) => r.json())
-      .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number }) => {
+      .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number; status: string }) => {
         setBooks(data.books);
         // Sync indices from DB in case an advance happened between server render and mount
         if (typeof data.revealBookIndex === "number") setBookIndex(data.revealBookIndex);
         if (typeof data.revealEntryIndex === "number") setEntryIndex(data.revealEntryIndex);
+        // If room is already finished (e.g. player loads after game ends), show Game Over
+        if (data.status === "finished") setFinished(true);
         setLoading(false);
       })
       .catch(() => setLoading(false));
