@@ -24,6 +24,7 @@ interface Props {
   initialTimerStartedAt?: string | null;
   initialRevealBookIndex?: number;
   initialRevealEntryIndex?: number;
+  initialScoringMode?: "friendly" | "competitive";
 }
 
 export function HostLobby({
@@ -36,6 +37,7 @@ export function HostLobby({
   initialTimerStartedAt = null,
   initialRevealBookIndex = 0,
   initialRevealEntryIndex = 0,
+  initialScoringMode = "friendly",
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [status, setStatus] = useState(initialStatus);
@@ -47,7 +49,7 @@ export function HostLobby({
   const [showQr, setShowQr] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
   const [numRounds, setNumRounds] = useState(3);
-  const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">("friendly");
+  const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
@@ -142,6 +144,7 @@ export function HostLobby({
     return (
       <HostRevealScreen
         code={code}
+        scoringMode={scoringMode}
         initialBookIndex={revealBookIndex}
         initialEntryIndex={revealEntryIndex}
       />
