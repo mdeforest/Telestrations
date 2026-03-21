@@ -6,7 +6,7 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #12 (Friendly Scoring & Voting) in PR #28 (branch `feat/friendly-scoring-issue-12`) — complete. 133 Vitest tests passing. Issue #11 (PR #26), #9 (PR #24), #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
+Issue #12 (Friendly Scoring & Voting) in PR #28 (branch `feat/friendly-scoring-issue-12`) — complete. 140 Vitest tests passing. Issue #11 (PR #26), #9 (PR #24), #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
 
 Key additions in issue #12: `vote-service` (`castVote`: self-vote guard, entry-in-book guard; `tallyVotes`: counts votes → writes 1 score row per vote received); `POST /api/votes`; `POST /api/rooms/[code]/tally` (host-only, broadcasts `scoring:complete` Ably event with leaderboard); `GET /api/rooms/[code]/leaderboard`; `PlayerRevealScreen` voting panel (per-book, sketch + guess, friendly mode only); `HostRevealScreen` tally button + leaderboard display; `channels.scoringComplete` added.
 
