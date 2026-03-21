@@ -17,6 +17,13 @@ export class NotHostError extends Error {
   }
 }
 
+export class NotRevealPhaseError extends Error {
+  constructor() {
+    super("Room is not in reveal phase");
+    this.name = "NotRevealPhaseError";
+  }
+}
+
 // ── Service factory ───────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +48,7 @@ export function createRevealService(db: any) {
 
     if (!room) throw new RoomNotFoundError(code);
     if (room.hostPlayerId !== playerId) throw new NotHostError();
+    if (room.status !== "reveal") throw new NotRevealPhaseError();
 
     // 2. Get all books in the room ordered by round number then player seat order
     const allBooks = await db

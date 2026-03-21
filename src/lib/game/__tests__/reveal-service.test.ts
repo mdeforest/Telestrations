@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   createRevealService,
   NotHostError,
+  NotRevealPhaseError,
   RoomNotFoundError,
 } from "../reveal-service";
 
@@ -146,6 +147,17 @@ describe("advanceReveal", () => {
 
     const service = createRevealService(db as never);
     await expect(service.advanceReveal(ROOM_CODE, WRONG_PLAYER_ID)).rejects.toThrow(NotHostError);
+  });
+
+  it("throws NotRevealPhaseError when room is not in reveal status", async () => {
+    const activeRoom = { ...ROOM_ROW, status: "active" as const };
+    const db = {
+      select: makeSelectSequence([[activeRoom]]),
+      update: vi.fn(),
+    };
+
+    const service = createRevealService(db as never);
+    await expect(service.advanceReveal(ROOM_CODE, HOST_ID)).rejects.toThrow(NotRevealPhaseError);
   });
 
   // ── Book transition ──────────────────────────────────────────────────────────

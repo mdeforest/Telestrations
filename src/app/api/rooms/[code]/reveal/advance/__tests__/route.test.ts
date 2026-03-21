@@ -21,6 +21,9 @@ vi.mock("@/lib/game/reveal-service", () => ({
   NotHostError: class NotHostError extends Error {
     constructor() { super("not host"); this.name = "NotHostError"; }
   },
+  NotRevealPhaseError: class NotRevealPhaseError extends Error {
+    constructor() { super("not reveal phase"); this.name = "NotRevealPhaseError"; }
+  },
 }));
 
 vi.mock("@/lib/db", () => ({ db: {} }));
@@ -112,5 +115,14 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
       revealEntryIndex: 0,
       finished: false,
     });
+  });
+
+  it("returns 409 when room is not in reveal phase", async () => {
+    mocks.cookieGet.mockReturnValue({ value: "host-1" });
+    const { NotRevealPhaseError } = await import("@/lib/game/reveal-service");
+    mocks.advanceReveal.mockRejectedValue(new NotRevealPhaseError());
+
+    const res = await POST(makeReq(), makeParams());
+    expect(res.status).toBe(409);
   });
 });
