@@ -214,4 +214,26 @@ describe("advanceReveal", () => {
     expect(result.revealBookIndex).toBe(1);
     expect(result.revealEntryIndex).toBe(1);
   });
+
+  // ── Out-of-bounds defence ────────────────────────────────────────────────────
+  it("returns finished:true and marks room finished when revealBookIndex is out of bounds", async () => {
+    // Room thinks it's on book 99 but only 2 books exist — stale/corrupt state
+    const roomOutOfBounds = { ...ROOM_ROW, revealBookIndex: 99, revealEntryIndex: 0 };
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const db = {
+      select: makeSelectSequence([
+        [roomOutOfBounds],
+        ALL_BOOKS, // only 2 books, index 99 is undefined
+        // no entries query — should short-circuit before reaching it
+      ]),
+      update: updateMock,
+    };
+
+    const service = createRevealService(db as never);
+    const result = await service.advanceReveal(ROOM_CODE, HOST_ID);
+
+    expect(result.finished).toBe(true);
+    expect(setCalls[0]).toMatchObject({ status: "finished" });
+  });
 });

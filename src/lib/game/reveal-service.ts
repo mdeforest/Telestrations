@@ -51,8 +51,21 @@ export function createRevealService(db: any) {
       .where(eq(rounds.roomId, room.id))
       .orderBy(asc(rounds.roundNumber), asc(players.seatOrder));
 
-    // 3. Get entries for the current book ordered by pass number
+    // 3. Guard against stale/out-of-bounds index (e.g., crash recovery)
     const currentBook = allBooks[room.revealBookIndex];
+    if (!currentBook) {
+      await db
+        .update(rooms)
+        .set({ status: "finished" })
+        .where(eq(rooms.id, room.id));
+      return {
+        revealBookIndex: room.revealBookIndex,
+        revealEntryIndex: room.revealEntryIndex,
+        finished: true,
+      };
+    }
+
+    // 4. Get entries for the current book ordered by pass number
     const bookEntries = await db
       .select()
       .from(entries)
@@ -62,7 +75,7 @@ export function createRevealService(db: any) {
     const totalEntries = bookEntries.length;
     const totalBooks = allBooks.length;
 
-    // 4. Determine and apply new state
+    // 5. Determine and apply new state
     if (room.revealEntryIndex + 1 < totalEntries) {
       // More entries in current book
       const newEntryIndex = room.revealEntryIndex + 1;

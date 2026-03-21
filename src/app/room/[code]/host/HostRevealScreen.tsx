@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
@@ -204,10 +204,9 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
 
           {/* Each entry — active = current, future = not yet revealed */}
           {currentBook.entries.map((entry, i) => (
-            <>
-              <ChainArrow key={`arrow-${entry.id}`} />
+            <Fragment key={entry.id}>
+              <ChainArrow />
               <ChainStep
-                key={entry.id}
                 label={`${entry.type === "drawing" ? "🎨" : "💬"} ${entry.authorNickname}`}
                 content={
                   entry.type === "drawing"
@@ -217,7 +216,7 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
                 isActive={i === entryIndex}
                 isFuture={i > entryIndex}
               />
-            </>
+            </Fragment>
           ))}
         </div>
       </div>
