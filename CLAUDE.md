@@ -6,11 +6,15 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #9 (Guessing Phase) in PR #24 (branch `feat/guessing-phase-issue-9`) — complete. 89 Vitest tests passing. Issues #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
+Issue #11 (Reveal Engine) in PR #26 (branch `feat/reveal-engine-issue-11`) — complete. 114 Vitest tests passing. Issues #9 (PR #24), #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
+
+Key additions in issue #11: `reveal-service` (`advanceReveal`: entry/book/finished progression, host-only guard); `POST /api/rooms/[code]/reveal/advance` broadcasts `reveal:advance` Ably event; `GET /api/rooms/[code]/reveal/books` returns all books with entries ordered by round+seat; `HostRevealScreen` (cinematic TV display with chain timeline); `PlayerRevealScreen` (phone view with own-entry highlight and host advance button); `HostLobby` + `LobbyPlayerList` wired for reveal/finished transitions.
 
 Key additions in issue #9: `GuessingPhaseScreen` (read-only canvas replay + text input + timer); `POST /api/entries` accepts `type: 'guess'`; entry-service round-completion detection (`roundComplete: boolean` from both `submitEntry` and `expirePass`); multi-round progression in the entries route (next round → `prompts`, final round → `reveal`); `my-entry` returns `type` + `incomingContent`; `LobbyPlayerList` routes on pass type.
 
-**Testing deps:** `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`. Per-file jsdom: `// @vitest-environment jsdom`. entry-service mocks use index-based `makeSelectSequence` — add new query responses when extending service methods or existing tests break.
+**Testing deps:** `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/user-event`, `@testing-library/jest-dom`, `jsdom`. Per-file jsdom: `// @vitest-environment jsdom`. entry-service mocks use index-based `makeSelectSequence` — add new query responses when extending service methods or existing tests break. Route tests mock `@/lib/db` with a `terminal` vi.fn() queue (one call per DB query in sequence via `mockResolvedValueOnce`).
+
+**fuzzyMatch** in `src/lib/game/fuzzy-match.ts` (branch `feat/fuzzy-match-issue-10`) — pure function, Levenshtein-based, full test suite (issue #10).
 
 ## Stack
 

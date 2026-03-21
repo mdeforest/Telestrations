@@ -6,6 +6,7 @@ import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
 import { HostDrawingScreen } from "./HostDrawingScreen";
+import { HostRevealScreen } from "./HostRevealScreen";
 
 interface Player {
   id: string;
@@ -21,6 +22,8 @@ interface Props {
   initialSelectedCount?: number;
   initialRoundId?: string;
   initialTimerStartedAt?: string | null;
+  initialRevealBookIndex?: number;
+  initialRevealEntryIndex?: number;
 }
 
 export function HostLobby({
@@ -31,11 +34,15 @@ export function HostLobby({
   initialSelectedCount = 0,
   initialRoundId,
   initialTimerStartedAt = null,
+  initialRevealBookIndex = 0,
+  initialRevealEntryIndex = 0,
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [status, setStatus] = useState(initialStatus);
   const [roundId, setRoundId] = useState(initialRoundId ?? "");
   const [timerStartedAt, setTimerStartedAt] = useState<string | null>(initialTimerStartedAt);
+  const [revealBookIndex, setRevealBookIndex] = useState(initialRevealBookIndex);
+  const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
@@ -103,9 +110,21 @@ export function HostLobby({
       if (newTimer !== undefined) setTimerStartedAt(newTimer);
     });
 
+    const revealCh = ably.channels.get(channels.revealAdvance(code));
+    revealCh.subscribe("reveal:advance", (msg) => {
+      const { revealBookIndex: bIdx, revealEntryIndex: eIdx } = msg.data as {
+        revealBookIndex: number;
+        revealEntryIndex: number;
+        finished: boolean;
+      };
+      setRevealBookIndex(bIdx);
+      setRevealEntryIndex(eIdx);
+    });
+
     return () => {
       playersCh.unsubscribe();
       statusCh.unsubscribe();
+      revealCh.unsubscribe();
     };
   }, [code]);
 
@@ -115,6 +134,16 @@ export function HostLobby({
         code={code}
         roundId={roundId}
         timerStartedAt={timerStartedAt}
+      />
+    );
+  }
+
+  if (status === "reveal" || status === "finished") {
+    return (
+      <HostRevealScreen
+        code={code}
+        initialBookIndex={revealBookIndex}
+        initialEntryIndex={revealEntryIndex}
       />
     );
   }

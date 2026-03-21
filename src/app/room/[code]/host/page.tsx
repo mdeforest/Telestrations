@@ -59,6 +59,8 @@ export default async function HostLobbyPage({ params }: Props) {
         initialSelectedCount={initialSelectedCount}
         initialRoundId={initialRoundId}
         initialTimerStartedAt={initialTimerStartedAt}
+        initialRevealBookIndex={room.revealBookIndex}
+        initialRevealEntryIndex={room.revealEntryIndex}
       />
     </main>
   );
