@@ -49,8 +49,11 @@ export function PlayerRevealScreen({
   useEffect(() => {
     fetch(`/api/rooms/${code}/reveal/books`)
       .then((r) => r.json())
-      .then((data: { books: Book[] }) => {
+      .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number }) => {
         setBooks(data.books);
+        // Sync indices from DB in case an advance happened between server render and mount
+        if (typeof data.revealBookIndex === "number") setBookIndex(data.revealBookIndex);
+        if (typeof data.revealEntryIndex === "number") setEntryIndex(data.revealEntryIndex);
         setLoading(false);
       })
       .catch(() => setLoading(false));
