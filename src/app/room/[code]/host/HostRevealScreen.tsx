@@ -23,8 +23,15 @@ interface Book {
   entries: Entry[];
 }
 
+interface LeaderboardEntry {
+  playerId: string;
+  nickname: string;
+  totalPoints: number | string | null;
+}
+
 interface Props {
   code: string;
+  scoringMode: "friendly" | "competitive";
   initialBookIndex: number;
   initialEntryIndex: number;
 }
@@ -66,13 +73,15 @@ function ChainArrow() {
   return <span className="text-gray-700 text-lg self-center pb-4">→</span>;
 }
 
-export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: Props) {
+export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialEntryIndex }: Props) {
   const [books, setBooks] = useState<Book[]>([]);
   const [bookIndex, setBookIndex] = useState(initialBookIndex);
   const [entryIndex, setEntryIndex] = useState(initialEntryIndex);
   const [finished, setFinished] = useState(false);
   const [advancing, setAdvancing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tallying, setTallying] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
 
   // Fetch all book+entry data on mount
   useEffect(() => {
@@ -80,10 +89,8 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
       .then((r) => r.json())
       .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number; status: string }) => {
         setBooks(data.books);
-        // Sync indices from DB in case an advance happened between server render and mount
         if (typeof data.revealBookIndex === "number") setBookIndex(data.revealBookIndex);
         if (typeof data.revealEntryIndex === "number") setEntryIndex(data.revealEntryIndex);
-        // If room is already finished (e.g. player loads after game ends), show Game Over
         if (data.status === "finished") setFinished(true);
         setLoading(false);
       })
@@ -107,6 +114,17 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
     return () => ch.unsubscribe();
   }, [code]);
 
+  // Subscribe to scoring:complete to update leaderboard if tallied elsewhere
+  useEffect(() => {
+    const ably = getAblyClient();
+    const ch = ably.channels.get(channels.scoringComplete(code));
+    ch.subscribe("scoring:complete", (msg) => {
+      const { leaderboard: lb } = msg.data as { leaderboard: LeaderboardEntry[] };
+      setLeaderboard(lb);
+    });
+    return () => ch.unsubscribe();
+  }, [code]);
+
   async function handleAdvance() {
     if (advancing) return;
     setAdvancing(true);
@@ -114,6 +132,20 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
       await fetch(`/api/rooms/${code}/reveal/advance`, { method: "POST" });
     } finally {
       setAdvancing(false);
+    }
+  }
+
+  async function handleTally() {
+    if (tallying) return;
+    setTallying(true);
+    try {
+      const res = await fetch(`/api/rooms/${code}/tally`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboard(data.leaderboard);
+      }
+    } finally {
+      setTallying(false);
     }
   }
 
@@ -133,7 +165,53 @@ export function HostRevealScreen({ code, initialBookIndex, initialEntryIndex }: 
     );
   }
 
+  // Leaderboard screen
+  if (leaderboard) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-8 px-8">
+        <div className="text-7xl">🏆</div>
+        <h1 className="text-5xl font-black">Leaderboard</h1>
+        <div className="w-full max-w-md flex flex-col gap-3">
+          {leaderboard.map((entry, i) => (
+            <div
+              key={entry.playerId}
+              className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-gray-800 border border-gray-700"
+            >
+              <span className="text-2xl font-black text-gray-400 w-8 text-center">
+                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+              </span>
+              <span className="flex-1 text-xl font-bold">{entry.nickname}</span>
+              <span className="text-lg font-semibold text-yellow-400">
+                {entry.totalPoints ?? 0} pts
+              </span>
+            </div>
+          ))}
+          {leaderboard.length === 0 && (
+            <p className="text-center text-gray-500">No votes were cast.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Game finished — friendly mode: tally votes
   if (finished || !currentBook || !currentEntry) {
+    if (scoringMode === "friendly") {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-6">
+          <div className="text-7xl">🎉</div>
+          <h1 className="text-4xl font-black">Reveal Complete!</h1>
+          <p className="text-gray-400 text-lg">Tally votes to see who won.</p>
+          <button
+            onClick={handleTally}
+            disabled={tallying}
+            className="px-10 py-4 rounded-2xl text-xl font-bold bg-yellow-400 text-gray-950 disabled:opacity-50 hover:bg-yellow-300 transition-colors shadow-lg"
+          >
+            {tallying ? "Tallying…" : "Tally Votes & Show Leaderboard"}
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-6">
         <div className="text-8xl">🎉</div>

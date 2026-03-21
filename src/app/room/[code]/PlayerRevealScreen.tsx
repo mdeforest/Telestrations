@@ -23,9 +23,22 @@ interface Book {
   entries: Entry[];
 }
 
+interface LeaderboardEntry {
+  playerId: string;
+  nickname: string;
+  totalPoints: number | string | null;
+}
+
+// Per-book vote selections (before submission)
+interface BookVoteSelection {
+  sketchEntryId?: string;
+  guessEntryId?: string;
+}
+
 interface Props {
   code: string;
   playerId: string;
+  scoringMode: "friendly" | "competitive";
   isHost?: boolean;
   initialBookIndex: number;
   initialEntryIndex: number;
@@ -34,6 +47,7 @@ interface Props {
 export function PlayerRevealScreen({
   code,
   playerId,
+  scoringMode,
   isHost = false,
   initialBookIndex,
   initialEntryIndex,
@@ -45,16 +59,22 @@ export function PlayerRevealScreen({
   const [advancing, setAdvancing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Voting state
+  const [voteSelections, setVoteSelections] = useState<Record<string, BookVoteSelection>>({});
+  const [submittedBookIds, setSubmittedBookIds] = useState<Set<string>>(new Set());
+  const [submittingBookId, setSubmittingBookId] = useState<string | null>(null);
+
+  // Leaderboard (friendly mode after scoring:complete)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
+
   // Fetch all book+entry data on mount
   useEffect(() => {
     fetch(`/api/rooms/${code}/reveal/books`)
       .then((r) => r.json())
       .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number; status: string }) => {
         setBooks(data.books);
-        // Sync indices from DB in case an advance happened between server render and mount
         if (typeof data.revealBookIndex === "number") setBookIndex(data.revealBookIndex);
         if (typeof data.revealEntryIndex === "number") setEntryIndex(data.revealEntryIndex);
-        // If room is already finished (e.g. player loads after game ends), show Game Over
         if (data.status === "finished") setFinished(true);
         setLoading(false);
       })
@@ -78,11 +98,43 @@ export function PlayerRevealScreen({
     return () => ch.unsubscribe();
   }, [code]);
 
+  // Subscribe to scoring:complete for leaderboard
+  useEffect(() => {
+    const ably = getAblyClient();
+    const ch = ably.channels.get(channels.scoringComplete(code));
+    ch.subscribe("scoring:complete", (msg) => {
+      const { leaderboard: lb } = msg.data as { leaderboard: LeaderboardEntry[] };
+      setLeaderboard(lb);
+    });
+    return () => ch.unsubscribe();
+  }, [code]);
+
   const currentBook = books[bookIndex];
   const currentEntry = currentBook?.entries[entryIndex];
 
   const isMyBook = currentBook?.ownerPlayerId === playerId;
   const isMyEntry = currentEntry?.authorPlayerId === playerId;
+
+  // Voting: show panel when all entries of the current book have been revealed
+  const isLastEntryOfBook =
+    currentBook !== undefined &&
+    entryIndex === currentBook.entries.length - 1;
+
+  // Entries in current book split by type, excluding player's own entries
+  const votableDrawings = currentBook?.entries.filter(
+    (e) => e.type === "drawing" && e.authorPlayerId !== playerId
+  ) ?? [];
+  const votableGuesses = currentBook?.entries.filter(
+    (e) => e.type === "guess" && e.authorPlayerId !== playerId
+  ) ?? [];
+
+  const currentBookVote = voteSelections[currentBook?.id ?? ""] ?? {};
+  const hasVotedCurrentBook = currentBook && submittedBookIds.has(currentBook.id);
+  const showVotingPanel =
+    scoringMode === "friendly" &&
+    isLastEntryOfBook &&
+    !hasVotedCurrentBook &&
+    (votableDrawings.length > 0 || votableGuesses.length > 0);
 
   async function handleAdvance() {
     if (advancing) return;
@@ -94,6 +146,44 @@ export function PlayerRevealScreen({
     }
   }
 
+  async function submitBookVotes(bookId: string) {
+    if (submittingBookId) return;
+    setSubmittingBookId(bookId);
+    const selection = voteSelections[bookId] ?? {};
+    const votePromises: Promise<Response>[] = [];
+
+    if (selection.sketchEntryId) {
+      votePromises.push(
+        fetch("/api/votes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookId,
+            entryId: selection.sketchEntryId,
+            voteType: "favorite_sketch",
+          }),
+        })
+      );
+    }
+    if (selection.guessEntryId) {
+      votePromises.push(
+        fetch("/api/votes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookId,
+            entryId: selection.guessEntryId,
+            voteType: "favorite_guess",
+          }),
+        })
+      );
+    }
+
+    await Promise.allSettled(votePromises);
+    setSubmittedBookIds((prev) => new Set([...prev, bookId]));
+    setSubmittingBookId(null);
+  }
+
   const replayStrokes = useMemo<Stroke[]>(() => {
     if (!currentEntry || currentEntry.type !== "drawing") return [];
     try { return JSON.parse(currentEntry.content) as Stroke[]; } catch { return []; }
@@ -103,6 +193,76 @@ export function PlayerRevealScreen({
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-gray-400">Loading reveal…</p>
+      </div>
+    );
+  }
+
+  // Leaderboard screen (after host tallies)
+  if (leaderboard) {
+    return (
+      <div className="flex flex-col items-center gap-6 py-16 w-full max-w-sm">
+        <div className="text-5xl">🏆</div>
+        <h2 className="text-2xl font-black">Leaderboard</h2>
+        <div className="w-full flex flex-col gap-3">
+          {leaderboard.map((entry, i) => (
+            <div
+              key={entry.playerId}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-colors ${
+                entry.playerId === playerId
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200"
+              }`}
+            >
+              <span className="font-bold text-gray-500 w-6 text-center">
+                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+              </span>
+              <span className="flex-1 font-medium">{entry.nickname}</span>
+              <span className="font-bold text-yellow-600">{entry.totalPoints ?? 0} pts</span>
+            </div>
+          ))}
+          {leaderboard.length === 0 && (
+            <p className="text-center text-gray-400 text-sm">No votes were cast.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // After reveal ends — friendly mode: wait for leaderboard
+  if (finished && scoringMode === "friendly") {
+    const allBooksVoted = books.every((b) => submittedBookIds.has(b.id));
+    return (
+      <div className="flex flex-col items-center gap-6 py-16 w-full max-w-sm">
+        <div className="text-5xl">🎉</div>
+        <h2 className="text-2xl font-black">Reveal Complete!</h2>
+        {!allBooksVoted && books.length > 0 && (
+          <>
+            <p className="text-gray-500 text-sm text-center">
+              Cast your remaining votes before the leaderboard:
+            </p>
+            {books.filter((b) => !submittedBookIds.has(b.id)).map((book) => (
+              <VotePanel
+                key={book.id}
+                book={book}
+                playerId={playerId}
+                selection={voteSelections[book.id] ?? {}}
+                onSelect={(field, entryId) =>
+                  setVoteSelections((prev) => ({
+                    ...prev,
+                    [book.id]: { ...prev[book.id], [field]: entryId },
+                  }))
+                }
+                onSubmit={() => submitBookVotes(book.id)}
+                submitting={submittingBookId === book.id}
+              />
+            ))}
+          </>
+        )}
+        <p className="text-gray-400 text-sm text-center">
+          {allBooksVoted
+            ? "Waiting for the host to reveal the leaderboard…"
+            : ""}
+        </p>
       </div>
     );
   }
@@ -179,6 +339,23 @@ export function PlayerRevealScreen({
         <span>Entry {entryIndex + 1} of {currentBook.entries.length}</span>
       </div>
 
+      {/* Per-book voting panel (friendly mode, last entry visible, not yet voted) */}
+      {showVotingPanel && (
+        <VotePanel
+          book={currentBook}
+          playerId={playerId}
+          selection={currentBookVote}
+          onSelect={(field, entryId) =>
+            setVoteSelections((prev) => ({
+              ...prev,
+              [currentBook.id]: { ...prev[currentBook.id], [field]: entryId },
+            }))
+          }
+          onSubmit={() => submitBookVotes(currentBook.id)}
+          submitting={submittingBookId === currentBook.id}
+        />
+      )}
+
       {isHost ? (
         <button
           onClick={handleAdvance}
@@ -192,6 +369,89 @@ export function PlayerRevealScreen({
           Waiting for host to advance…
         </p>
       )}
+    </div>
+  );
+}
+
+// ── VotePanel ──────────────────────────────────────────────────────────────────
+
+interface VotePanelProps {
+  book: Book;
+  playerId: string;
+  selection: BookVoteSelection;
+  onSelect: (field: "sketchEntryId" | "guessEntryId", entryId: string) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+}
+
+function VotePanel({ book, playerId, selection, onSelect, onSubmit, submitting }: VotePanelProps) {
+  const votableDrawings = book.entries.filter(
+    (e) => e.type === "drawing" && e.authorPlayerId !== playerId
+  );
+  const votableGuesses = book.entries.filter(
+    (e) => e.type === "guess" && e.authorPlayerId !== playerId
+  );
+
+  const canSubmit =
+    (votableDrawings.length === 0 || selection.sketchEntryId) &&
+    (votableGuesses.length === 0 || selection.guessEntryId);
+
+  return (
+    <div className="rounded-xl border-2 border-purple-300 bg-purple-50 p-4 flex flex-col gap-4">
+      <h3 className="text-sm font-bold text-purple-800 uppercase tracking-wider">
+        Vote for your favorites
+      </h3>
+
+      {votableDrawings.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 mb-2">🎨 Best sketch</p>
+          <div className="flex flex-col gap-2">
+            {votableDrawings.map((entry) => (
+              <button
+                key={entry.id}
+                onClick={() => onSelect("sketchEntryId", entry.id)}
+                className={`px-3 py-2 rounded-lg border text-left text-sm transition-colors ${
+                  selection.sketchEntryId === entry.id
+                    ? "border-purple-500 bg-purple-100 font-semibold"
+                    : "border-gray-200 bg-white hover:bg-gray-50"
+                }`}
+              >
+                {entry.authorNickname}&apos;s drawing
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {votableGuesses.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 mb-2">💬 Best guess</p>
+          <div className="flex flex-col gap-2">
+            {votableGuesses.map((entry) => (
+              <button
+                key={entry.id}
+                onClick={() => onSelect("guessEntryId", entry.id)}
+                className={`px-3 py-2 rounded-lg border text-left text-sm transition-colors ${
+                  selection.guessEntryId === entry.id
+                    ? "border-purple-500 bg-purple-100 font-semibold"
+                    : "border-gray-200 bg-white hover:bg-gray-50"
+                }`}
+              >
+                &ldquo;{entry.content}&rdquo;
+                <span className="text-gray-400 text-xs ml-1">— {entry.authorNickname}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={onSubmit}
+        disabled={!canSubmit || submitting}
+        className="w-full py-2.5 rounded-xl text-sm font-bold bg-purple-600 text-white disabled:opacity-40 hover:bg-purple-700 transition-colors"
+      >
+        {submitting ? "Submitting…" : "Submit Votes"}
+      </button>
     </div>
   );
 }

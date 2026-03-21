@@ -8,4 +8,5 @@ export const channels = {
   roundTimer: (code: string) => `room:${code}:round:timer`,
   roundPass: (code: string) => `room:${code}:round:pass`,
   revealAdvance: (code: string) => `room:${code}:reveal:advance`,
+  scoringComplete: (code: string) => `room:${code}:scoring:complete`,
 } as const;

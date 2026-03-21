@@ -151,6 +151,7 @@ export function LobbyPlayerList({
       <PlayerRevealScreen
         code={code}
         playerId={playerId}
+        scoringMode={scoringMode}
         isHost={isHost}
         initialBookIndex={revealBookIndex}
         initialEntryIndex={revealEntryIndex}
