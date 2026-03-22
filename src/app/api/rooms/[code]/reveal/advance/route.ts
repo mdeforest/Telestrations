@@ -31,6 +31,17 @@ export async function POST(
       .channels.get(channels.revealAdvance(code.toUpperCase()))
       .publish("reveal:advance", result);
 
+    // When the round's reveal is complete and there's another round, broadcast
+    // the prompts transition so all clients advance to the next round's prompt phase
+    if (result.nextRound) {
+      await getAblyRest()
+        .channels.get(channels.roomStatus(code.toUpperCase()))
+        .publish("room-status-changed", {
+          status: "prompts",
+          roundId: result.nextRoundId,
+        });
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof RoomNotFoundError) {
