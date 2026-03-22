@@ -49,7 +49,10 @@ export async function GET(
     return NextResponse.json({ error: "No entry found for this player" }, { status: 404 });
   }
 
-  // For guess passes, load the previous pass's drawing so the UI can display it
+  // Load the content the player needs to act on:
+  // - guess pass: the previous drawing to guess from
+  // - drawing pass 1: the book's original prompt (the word to draw)
+  // - drawing pass 3+: the previous guess (the word to draw)
   let incomingContent: string | null = null;
   if (myEntry.type === "guess" && myEntry.passNumber > 1) {
     const [prevEntry] = await db
@@ -62,6 +65,25 @@ export async function GET(
         )
       );
     incomingContent = prevEntry?.content ?? null;
+  } else if (myEntry.type === "drawing") {
+    if (myEntry.passNumber === 1) {
+      const [book] = await db
+        .select({ originalPrompt: books.originalPrompt })
+        .from(books)
+        .where(eq(books.id, myEntry.bookId));
+      incomingContent = book?.originalPrompt ?? null;
+    } else {
+      const [prevEntry] = await db
+        .select({ content: entries.content })
+        .from(entries)
+        .where(
+          and(
+            eq(entries.bookId, myEntry.bookId),
+            eq(entries.passNumber, myEntry.passNumber - 1)
+          )
+        );
+      incomingContent = prevEntry?.content ?? null;
+    }
   }
 
   return NextResponse.json({
