@@ -108,7 +108,7 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
         ref={canvasRef}
         width={400}
         height={400}
-        className="border border-gray-300 touch-none"
+        className="border border-gray-300 touch-none bg-white"
         onMouseDown={readOnly ? undefined : startDrawing}
         onMouseMove={readOnly ? undefined : continueDrawing}
         onMouseUp={readOnly ? undefined : endDrawing}
