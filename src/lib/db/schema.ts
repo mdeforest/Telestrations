@@ -32,6 +32,7 @@ export const entryTypeEnum = pgEnum("entry_type", ["drawing", "guess"]);
 export const scoreReasonEnum = pgEnum("score_reason", [
   "correct_guess",
   "aided_correct",
+  "drawing_credited",
   "favorite_sketch",
   "favorite_guess",
   "chain_survived",

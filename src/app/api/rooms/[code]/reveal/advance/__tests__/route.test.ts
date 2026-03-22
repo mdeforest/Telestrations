@@ -125,4 +125,43 @@ describe("POST /api/rooms/[code]/reveal/advance", () => {
     const res = await POST(makeReq(), makeParams());
     expect(res.status).toBe(409);
   });
+
+  it("publishes room-status-changed prompts event when nextRound is true", async () => {
+    mocks.getPlayerId.mockResolvedValue("host-1");
+    mocks.advanceReveal.mockResolvedValue({
+      revealBookIndex: 1,
+      revealEntryIndex: 1,
+      finished: false,
+      nextRound: true,
+      nextRoundId: "round-2",
+    });
+
+    await POST(makeReq(), makeParams());
+
+    // Should publish both reveal:advance AND room-status-changed
+    expect(mocks.ablyPublish).toHaveBeenCalledWith("reveal:advance", expect.objectContaining({
+      nextRound: true,
+      nextRoundId: "round-2",
+    }));
+    expect(mocks.ablyPublish).toHaveBeenCalledWith("room-status-changed", {
+      status: "prompts",
+      roundId: "round-2",
+    });
+  });
+
+  it("does not publish room-status-changed when nextRound is false", async () => {
+    mocks.getPlayerId.mockResolvedValue("host-1");
+    mocks.advanceReveal.mockResolvedValue({
+      revealBookIndex: 0,
+      revealEntryIndex: 1,
+      finished: false,
+      nextRound: false,
+      nextRoundId: null,
+    });
+
+    await POST(makeReq(), makeParams());
+
+    expect(mocks.ablyPublish).toHaveBeenCalledTimes(1);
+    expect(mocks.ablyPublish).toHaveBeenCalledWith("reveal:advance", expect.anything());
+  });
 });

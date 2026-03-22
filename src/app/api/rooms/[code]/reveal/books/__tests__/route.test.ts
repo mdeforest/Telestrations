@@ -67,6 +67,7 @@ const ROOM = {
   id: "room-1",
   code: "ABCDEF",
   status: "reveal",
+  currentRound: 0,
   revealBookIndex: 1,
   revealEntryIndex: 2,
 };
@@ -117,11 +118,11 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
     expect(res.status).toBe(404);
   });
 
-  // ── Empty room (no rounds) ──────────────────────────────────────────────────
-  it("returns empty books array when room has no rounds", async () => {
+  // ── Current round not found ─────────────────────────────────────────────────
+  it("returns empty books array when current round is not found", async () => {
     mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.terminal.mockResolvedValueOnce([ROOM]); // room
-    mocks.terminal.mockResolvedValueOnce([]);     // rounds → empty
+    mocks.terminal.mockResolvedValueOnce([]);     // current round lookup → empty
 
     const res = await GET(makeReq(), makeParams());
     expect(res.status).toBe(200);
@@ -150,6 +151,27 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
     expect(body.books[0].ownerNickname).toBe("Alice");
     expect(body.books[0].entries).toHaveLength(1);
     expect(body.books[0].entries[0].id).toBe("entry-1");
+  });
+
+  it("scopes books to current round (uses room.currentRound)", async () => {
+    // Room in round 2 — only round 2's books should be in the response
+    const roomRound2 = { ...ROOM, currentRound: 2 };
+    const round2 = { id: "round-2", roomId: "room-1", roundNumber: 2 };
+    const bookRound2 = { ...BOOK, id: "book-r2", roundId: "round-2", roundNumber: 2 };
+    const entryRound2 = { ...ENTRY, id: "entry-r2", bookId: "book-r2" };
+
+    mocks.getPlayerId.mockResolvedValue("player-1");
+    mocks.terminal.mockResolvedValueOnce([roomRound2]);
+    mocks.terminal.mockResolvedValueOnce([round2]);
+    mocks.terminal.mockResolvedValueOnce([bookRound2]);
+    mocks.terminal.mockResolvedValueOnce([entryRound2]);
+
+    const res = await GET(makeReq(), makeParams());
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.books).toHaveLength(1);
+    expect(body.books[0].id).toBe("book-r2");
   });
 
   it("groups entries by book correctly", async () => {

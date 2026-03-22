@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import { books, rounds, rooms } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   createEntryService,
   WrongAuthorError,
@@ -50,8 +50,18 @@ export async function POST(req: NextRequest) {
 
   const service = createEntryService(db);
 
+  // Resolve scoringMode via book → round → room (needed for fuzzy scoring in competitive mode)
+  const [scoringInfo] = await db
+    .select({ scoringMode: rooms.scoringMode })
+    .from(books)
+    .innerJoin(rounds, eq(books.roundId, rounds.id))
+    .innerJoin(rooms, eq(rounds.roomId, rooms.id))
+    .where(eq(books.id, bookId));
+
+  const scoringMode = scoringInfo?.scoringMode;
+
   try {
-    const result = await service.submitEntry(bookId, passNumber, playerId, content);
+    const result = await service.submitEntry(bookId, passNumber, playerId, content, scoringMode);
 
     if (result.allSubmitted) {
       // Look up the room so we can publish Ably events
@@ -69,42 +79,16 @@ export async function POST(req: NextRequest) {
 
           if (room) {
             if (result.roundComplete) {
-              // All passes done — advance to next round or finish.
-              // currentRound defaults to 0; page.tsx uses Math.max(currentRound, 1)
-              // to get the actual 1-based round number being played.
-              const currentRoundNumber = Math.max(room.currentRound, 1);
+              // Round done — always transition to reveal so each round has its own reveal phase.
+              // The reveal service handles advancing to the next round's prompts when applicable.
+              await db
+                .update(rooms)
+                .set({ status: "reveal" })
+                .where(eq(rooms.id, room.id));
 
-              if (currentRoundNumber < room.numRounds) {
-                // Start next round: set currentRound to the next round number
-                const nextRoundNumber = currentRoundNumber + 1;
-                await db
-                  .update(rooms)
-                  .set({ status: "prompts", currentRound: nextRoundNumber })
-                  .where(eq(rooms.id, room.id));
-
-                // Find the next round row (already created at game start)
-                const [nextRound] = await db
-                  .select({ id: rounds.id })
-                  .from(rounds)
-                  .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, nextRoundNumber)));
-
-                await getAblyRest()
-                  .channels.get(channels.roomStatus(room.code))
-                  .publish("room-status-changed", {
-                    status: "prompts",
-                    roundId: nextRound?.id ?? null,
-                  });
-              } else {
-                // Final round done — transition to reveal
-                await db
-                  .update(rooms)
-                  .set({ status: "reveal" })
-                  .where(eq(rooms.id, room.id));
-
-                await getAblyRest()
-                  .channels.get(channels.roomStatus(room.code))
-                  .publish("room-status-changed", { status: "reveal" });
-              }
+              await getAblyRest()
+                .channels.get(channels.roomStatus(room.code))
+                .publish("room-status-changed", { status: "reveal" });
             } else {
               // More passes remain — signal clients to move to next pass
               await getAblyRest()
@@ -182,36 +166,16 @@ export async function DELETE(req: NextRequest) {
 
     if (room) {
       if (expireResult.roundComplete) {
-        const currentRoundNumber = Math.max(room.currentRound, 1);
+        // Round done — always transition to reveal.
+        // The reveal service handles advancing to the next round's prompts.
+        await db
+          .update(rooms)
+          .set({ status: "reveal" })
+          .where(eq(rooms.id, room.id));
 
-        if (currentRoundNumber < room.numRounds) {
-          const nextRoundNumber = currentRoundNumber + 1;
-          await db
-            .update(rooms)
-            .set({ status: "prompts", currentRound: nextRoundNumber })
-            .where(eq(rooms.id, room.id));
-
-          const [nextRound] = await db
-            .select({ id: rounds.id })
-            .from(rounds)
-            .where(and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, nextRoundNumber)));
-
-          await getAblyRest()
-            .channels.get(channels.roomStatus(room.code))
-            .publish("room-status-changed", {
-              status: "prompts",
-              roundId: nextRound?.id ?? null,
-            });
-        } else {
-          await db
-            .update(rooms)
-            .set({ status: "reveal" })
-            .where(eq(rooms.id, room.id));
-
-          await getAblyRest()
-            .channels.get(channels.roomStatus(room.code))
-            .publish("room-status-changed", { status: "reveal" });
-        }
+        await getAblyRest()
+          .channels.get(channels.roomStatus(room.code))
+          .publish("room-status-changed", { status: "reveal" });
       } else {
         await getAblyRest()
           .channels.get(channels.roundPass(room.code))

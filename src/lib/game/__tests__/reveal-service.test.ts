@@ -69,21 +69,24 @@ const ROOM_ID = "room-1";
 const ROOM_CODE = "ABCDEF";
 const HOST_ID = "host-player-1";
 const WRONG_PLAYER_ID = "player-99";
+const ROUND_2_ID = "round-2";
 
 const BOOK_1_ID = "book-1";
 const BOOK_2_ID = "book-2";
 
-// Room at the very start of reveal (book 0, entry 0)
+// Room at the very start of reveal (book 0, entry 0), currentRound=0 → round 1
 const ROOM_ROW = {
   id: ROOM_ID,
   code: ROOM_CODE,
   status: "reveal" as const,
   hostPlayerId: HOST_ID,
+  currentRound: 0,
+  numRounds: 1,
   revealBookIndex: 0,
   revealEntryIndex: 0,
 };
 
-// Ordered list of all books in the room (2 books for simplicity)
+// Ordered list of books for round 1 only
 const ALL_BOOKS = [
   { id: BOOK_1_ID, roundNumber: 1, seatOrder: 1 },
   { id: BOOK_2_ID, roundNumber: 1, seatOrder: 2 },
@@ -184,10 +187,11 @@ describe("advanceReveal", () => {
     expect(setCalls[0]).toMatchObject({ revealBookIndex: 1, revealEntryIndex: 0 });
   });
 
-  // ── Game end ─────────────────────────────────────────────────────────────────
-  it("marks game finished when at last entry of last book", async () => {
+  // ── Game end (single-round or final round) ───────────────────────────────────
+  it("marks game finished when at last entry of last book in the final round", async () => {
     // Room at book 1 (last book), entry 1 (last entry of book 2 which has 2 entries)
-    const roomAtEnd = { ...ROOM_ROW, revealBookIndex: 1, revealEntryIndex: 1 };
+    // numRounds=1 → this IS the last round
+    const roomAtEnd = { ...ROOM_ROW, revealBookIndex: 1, revealEntryIndex: 1, numRounds: 1 };
     const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
 
     const db = {
@@ -203,12 +207,13 @@ describe("advanceReveal", () => {
     const result = await service.advanceReveal(ROOM_CODE, HOST_ID);
 
     expect(result.finished).toBe(true);
+    expect(result.nextRound).toBe(false);
     expect(setCalls[0]).toMatchObject({ status: "finished" });
   });
 
   // ── Return values ────────────────────────────────────────────────────────────
   it("returns current indices (unchanged) when marking finished", async () => {
-    const roomAtEnd = { ...ROOM_ROW, revealBookIndex: 1, revealEntryIndex: 1 };
+    const roomAtEnd = { ...ROOM_ROW, revealBookIndex: 1, revealEntryIndex: 1, numRounds: 1 };
     const { mock: updateMock } = makeTrackingUpdateMock();
 
     const db = {
@@ -230,7 +235,7 @@ describe("advanceReveal", () => {
   // ── Out-of-bounds defence ────────────────────────────────────────────────────
   it("returns finished:true and marks room finished when revealBookIndex is out of bounds", async () => {
     // Room thinks it's on book 99 but only 2 books exist — stale/corrupt state
-    const roomOutOfBounds = { ...ROOM_ROW, revealBookIndex: 99, revealEntryIndex: 0 };
+    const roomOutOfBounds = { ...ROOM_ROW, revealBookIndex: 99, revealEntryIndex: 0, numRounds: 1 };
     const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
 
     const db = {
@@ -247,5 +252,79 @@ describe("advanceReveal", () => {
 
     expect(result.finished).toBe(true);
     expect(setCalls[0]).toMatchObject({ status: "finished" });
+  });
+
+  // ── Multi-round transition ────────────────────────────────────────────────────
+  it("transitions to prompts for next round when all books revealed and more rounds remain", async () => {
+    // Room at last entry of last book, but numRounds=2 → more rounds remain
+    // currentRound=0 → round 1 just revealed; next round is round 2
+    const roomAtEndOfRound1 = {
+      ...ROOM_ROW,
+      revealBookIndex: 1,
+      revealEntryIndex: 1,
+      currentRound: 0,
+      numRounds: 2,
+    };
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const ROUND_2_ROW = { id: ROUND_2_ID };
+
+    const db = {
+      select: makeSelectSequence([
+        [roomAtEndOfRound1],    // room
+        ALL_BOOKS,              // books for round 1
+        BOOK_2_ENTRIES,         // entries for last book
+        [ROUND_2_ROW],          // next round lookup
+      ]),
+      update: updateMock,
+    };
+
+    const service = createRevealService(db as never);
+    const result = await service.advanceReveal(ROOM_CODE, HOST_ID);
+
+    expect(result.finished).toBe(false);
+    expect(result.nextRound).toBe(true);
+    expect(result.nextRoundId).toBe(ROUND_2_ID);
+    expect(setCalls[0]).toMatchObject({
+      status: "prompts",
+      currentRound: 2,
+      revealBookIndex: 0,
+      revealEntryIndex: 0,
+    });
+  });
+
+  it("scopes book query to the current round (not all rounds)", async () => {
+    // currentRound=2 → should only see round 2's books, not round 1's
+    const roomInRound2 = {
+      ...ROOM_ROW,
+      currentRound: 2,
+      numRounds: 2,
+      revealBookIndex: 0,
+      revealEntryIndex: 0,
+    };
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const ROUND_2_BOOKS = [{ id: "book-r2", roundNumber: 2, seatOrder: 1 }];
+    // Two entries so there is something to advance to from index 0
+    const ROUND_2_BOOK_ENTRIES = [
+      { id: "e1", bookId: "book-r2", passNumber: 1, type: "drawing", content: "" },
+      { id: "e2", bookId: "book-r2", passNumber: 2, type: "guess", content: "cat" },
+    ];
+
+    const db = {
+      select: makeSelectSequence([
+        [roomInRound2],
+        ROUND_2_BOOKS,        // only round 2's books
+        ROUND_2_BOOK_ENTRIES, // 2 entries → can advance from 0 to 1
+      ]),
+      update: updateMock,
+    };
+
+    const service = createRevealService(db as never);
+    const result = await service.advanceReveal(ROOM_CODE, HOST_ID);
+
+    // Advances to entry 1 (from 0)
+    expect(result.revealEntryIndex).toBe(1);
+    expect(setCalls[0]).toMatchObject({ revealEntryIndex: 1 });
   });
 });
