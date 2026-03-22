@@ -265,6 +265,83 @@ describe("submitEntry", () => {
     expect(setCalls[0]).toMatchObject({ content: guessContent });
     expect(result.allSubmitted).toBe(false);
   });
+
+  it("stores fuzzyCorrect: true on a guess entry in competitive mode when content matches originalPrompt", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const guessEntry = { ...ENTRY_ROW, type: "guess" as const };
+    // BOOK_ROW.originalPrompt = "A cat", content = "a cat" → fuzzyMatch = true
+    const db = {
+      select: makeSelectSequence([
+        [guessEntry],
+        [BOOK_ROW],
+        [{ count: 1 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, "a cat", "competitive");
+
+    expect(setCalls[0]).toMatchObject({ fuzzyCorrect: true });
+  });
+
+  it("stores fuzzyCorrect: false on a guess entry in competitive mode when content does not match", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const guessEntry = { ...ENTRY_ROW, type: "guess" as const };
+    const db = {
+      select: makeSelectSequence([
+        [guessEntry],
+        [BOOK_ROW],  // originalPrompt = "A cat"
+        [{ count: 1 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, "a spaceship", "competitive");
+
+    expect(setCalls[0]).toMatchObject({ fuzzyCorrect: false });
+  });
+
+  it("does not set fuzzyCorrect for a drawing entry in competitive mode", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    // ENTRY_ROW.type = "drawing"
+    const db = {
+      select: makeSelectSequence([
+        [ENTRY_ROW],
+        [BOOK_ROW],
+        [{ count: 1 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, VALID_CONTENT, "competitive");
+
+    expect(setCalls[0]).not.toHaveProperty("fuzzyCorrect");
+  });
+
+  it("does not set fuzzyCorrect for a guess in friendly mode", async () => {
+    const { mock: updateMock, setCalls } = makeTrackingUpdateMock();
+
+    const guessEntry = { ...ENTRY_ROW, type: "guess" as const };
+    const db = {
+      select: makeSelectSequence([
+        [guessEntry],
+        [BOOK_ROW],
+        [{ count: 1 }],
+      ]),
+      update: updateMock,
+    };
+
+    const service = createEntryService(db as never);
+    await service.submitEntry(BOOK_ID, PASS_NUMBER, PLAYER_ID, "a cat", "friendly");
+
+    expect(setCalls[0]).not.toHaveProperty("fuzzyCorrect");
+  });
 });
 
 // ── expirePass ────────────────────────────────────────────────────────────────

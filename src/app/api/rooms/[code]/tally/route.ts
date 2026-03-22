@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { rooms, scores, players } from "@/lib/db/schema";
 import { desc, eq, sum } from "drizzle-orm";
 import { createVoteService } from "@/lib/game/vote-service";
+import { createCompetitiveScoreService } from "@/lib/game/competitive-score-service";
 import { getAblyRest } from "@/lib/realtime/server";
 import { channels } from "@/lib/realtime/channels";
 
@@ -39,9 +40,14 @@ export async function POST(
     );
   }
 
-  // Tally votes into scores
-  const service = createVoteService(db);
-  await service.tallyVotes(room.id);
+  // Tally scores — branch on scoring mode
+  if (room.scoringMode === "competitive") {
+    const competitiveService = createCompetitiveScoreService(db);
+    await competitiveService.tallyCompetitiveScores(room.id);
+  } else {
+    const voteService = createVoteService(db);
+    await voteService.tallyVotes(room.id);
+  }
 
   // Fetch leaderboard to broadcast
   const leaderboard = await db

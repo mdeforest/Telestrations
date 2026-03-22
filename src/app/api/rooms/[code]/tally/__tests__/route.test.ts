@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getPlayerId: vi.fn(),
   dbSelect: vi.fn(),
   tallyVotes: vi.fn(),
+  tallyCompetitiveScores: vi.fn(),
   ablyPublish: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -18,6 +19,15 @@ vi.mock("@/lib/db", () => ({ db: { select: mocks.dbSelect } }));
 
 vi.mock("@/lib/game/vote-service", () => ({
   createVoteService: () => ({ tallyVotes: mocks.tallyVotes }),
+}));
+
+vi.mock("@/lib/game/competitive-score-service", () => ({
+  createCompetitiveScoreService: () => ({
+    tallyCompetitiveScores: mocks.tallyCompetitiveScores,
+  }),
+  NoRoomFoundError: class NoRoomFoundError extends Error {
+    constructor(id: string) { super(id); this.name = "NoRoomFoundError"; }
+  },
 }));
 
 vi.mock("@/lib/realtime/server", () => ({
@@ -61,6 +71,7 @@ describe("POST /api/rooms/[code]/tally", () => {
     vi.clearAllMocks();
     mocks.ablyPublish.mockResolvedValue(undefined);
     mocks.tallyVotes.mockResolvedValue([]);
+    mocks.tallyCompetitiveScores.mockResolvedValue([]);
   });
 
   it("returns 401 when playerId cookie is missing", async () => {
@@ -185,5 +196,65 @@ describe("POST /api/rooms/[code]/tally", () => {
     expect(mocks.ablyPublish).toHaveBeenCalledWith("scoring:complete", {
       leaderboard: LEADERBOARD_ROWS,
     });
+  });
+
+  // ── Competitive mode ──────────────────────────────────────────────────────
+
+  const COMPETITIVE_ROOM_ROW = {
+    ...ROOM_ROW,
+    scoringMode: "competitive",
+  };
+
+  it("calls tallyCompetitiveScores (not tallyVotes) in competitive mode", async () => {
+    mocks.getPlayerId.mockResolvedValue("host-1");
+    mocks.dbSelect
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([COMPETITIVE_ROOM_ROW]),
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              groupBy: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockResolvedValue(LEADERBOARD_ROWS),
+              }),
+            }),
+          }),
+        }),
+      }));
+
+    await POST(makeReq(), makeParams());
+
+    expect(mocks.tallyCompetitiveScores).toHaveBeenCalledWith("room-1");
+    expect(mocks.tallyVotes).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 with leaderboard in competitive mode", async () => {
+    mocks.getPlayerId.mockResolvedValue("host-1");
+    mocks.dbSelect
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([COMPETITIVE_ROOM_ROW]),
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              groupBy: vi.fn().mockReturnValue({
+                orderBy: vi.fn().mockResolvedValue(LEADERBOARD_ROWS),
+              }),
+            }),
+          }),
+        }),
+      }));
+
+    const res = await POST(makeReq(), makeParams());
+    expect(res.status).toBe(200);
+
+    const body = await res.json();
+    expect(body.leaderboard).toHaveLength(2);
   });
 });

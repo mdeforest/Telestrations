@@ -50,8 +50,18 @@ export async function POST(req: NextRequest) {
 
   const service = createEntryService(db);
 
+  // Resolve scoringMode via book → round → room (needed for fuzzy scoring in competitive mode)
+  const [scoringInfo] = await db
+    .select({ scoringMode: rooms.scoringMode })
+    .from(books)
+    .innerJoin(rounds, eq(books.roundId, rounds.id))
+    .innerJoin(rooms, eq(rounds.roomId, rooms.id))
+    .where(eq(books.id, bookId));
+
+  const scoringMode = scoringInfo?.scoringMode;
+
   try {
-    const result = await service.submitEntry(bookId, passNumber, playerId, content);
+    const result = await service.submitEntry(bookId, passNumber, playerId, content, scoringMode);
 
     if (result.allSubmitted) {
       // Look up the room so we can publish Ably events

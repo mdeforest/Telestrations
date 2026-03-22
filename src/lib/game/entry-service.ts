@@ -1,5 +1,6 @@
 import { books, entries, rounds } from "@/lib/db/schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { fuzzyMatch } from "@/lib/game/fuzzy-match";
 
 // ── Errors ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,8 @@ export function createEntryService(db: any) {
     bookId: string,
     passNumber: number,
     playerId: string,
-    content: string
+    content: string,
+    scoringMode?: string
   ): Promise<{ allSubmitted: boolean; roundComplete: boolean }> {
     // 1. Find the entry
     const [entry] = await db
@@ -75,19 +77,28 @@ export function createEntryService(db: any) {
       throw new ContentTooLargeError(content.length);
     }
 
-    // 5. Save content + submitted_at
-    await db
-      .update(entries)
-      .set({ content, submittedAt: new Date() })
-      .where(eq(entries.id, entry.id))
-      .returning();
-
-    // 6. Count remaining unsubmitted entries for this pass across all books in
-    //    the same round. Look up the book to get roundId, then count.
+    // 5. Load book to get roundId and originalPrompt (needed before update
+    //    for fuzzy scoring in competitive mode)
     const [book] = await db
       .select()
       .from(books)
       .where(eq(books.id, bookId));
+
+    // 6. Compute fuzzyCorrect for guess entries in competitive mode
+    const updateFields: Record<string, unknown> = { content, submittedAt: new Date() };
+    if (scoringMode === "competitive" && entry.type === "guess" && book) {
+      updateFields.fuzzyCorrect = fuzzyMatch(content, book.originalPrompt);
+    }
+
+    // 7. Save entry
+    await db
+      .update(entries)
+      .set(updateFields)
+      .where(eq(entries.id, entry.id))
+      .returning();
+
+    // 8. Count remaining unsubmitted entries for this pass across all books in
+    //    the same round.
 
     if (!book) {
       return { allSubmitted: false, roundComplete: false };
