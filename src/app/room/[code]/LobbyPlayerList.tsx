@@ -200,88 +200,147 @@ export function LobbyPlayerList({
   }
 
   return (
-    <div className="w-full max-w-md flex flex-col gap-6 font-body">
-      <ul className="flex flex-col gap-4">
-        {playerList.map((p, index) => (
-          <li
-            key={p.id}
-            className={`flex items-center gap-4 rounded-2xl px-5 py-4 ${
-              index % 2 === 0 ? "bg-surface-container-low" : "bg-surface-container-high"
-            } transform ${index % 2 === 0 ? "-rotate-1" : "rotate-1"}`}
-          >
-            <span className="text-sm font-label text-on-surface-variant w-5 text-right font-bold opacity-70">
-              {p.seatOrder}
-            </span>
-            <span className="font-bold text-on-surface text-xl font-display">{p.nickname}</span>
-            {p.id === currentHostId && (
-              <span className="ml-auto text-xs font-bold font-label uppercase tracking-widest text-secondary opacity-90">
-                host
+    <main className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Left Column: Players List */}
+        <div className="lg:col-span-7 flex flex-col gap-6">
+          <div className="bg-surface-container-low p-8 rounded-lg paper-stack-1 border-outline-variant/10 border relative shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-headline text-2xl font-extrabold text-primary">Players Joined</h2>
+              <span className="font-label bg-secondary-container text-on-secondary-container px-4 py-1 rounded-full text-sm font-bold uppercase tracking-wider">
+                {playerList.length} / 8
               </span>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {isHost && (
-        <section className="flex flex-col gap-6 mt-4 bg-surface-container p-6 sm:p-8 rounded-[2rem] shadow-ambient transform -rotate-1">
-          <h2 className="text-sm font-bold font-label text-on-surface-variant uppercase tracking-[0.15em]">
-            Host Controls
-          </h2>
-
-          {!canStart && (
-            <p className="text-sm font-bold text-error bg-error-container/20 px-4 py-3 rounded-xl transform rotate-1">
-              Need at least 4 players to start ({4 - playerList.length} more)
-            </p>
-          )}
-
-          <div className="flex items-center justify-between">
-            <label htmlFor="rounds" className="font-bold font-display text-lg text-on-surface">
-              Rounds
-            </label>
-            <select
-              id="rounds"
-              value={numRounds}
-              onChange={(e) => setNumRounds(Number(e.target.value))}
-              className="bg-surface-container-lowest rounded-xl px-4 py-2 text-lg font-bold font-body text-on-surface ring-1 ring-outline-variant/15 focus:ring-outline-variant/40 focus:outline-none transition-all cursor-pointer"
-            >
-              {[3, 4, 5, 6, 7, 8].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <span className="font-bold font-display text-lg text-on-surface">Scoring Mode</span>
-            <div className="flex rounded-xl bg-surface-container-lowest p-1 ring-1 ring-outline-variant/15">
-              {(["friendly", "competitive"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setScoringMode(mode)}
-                  className={`flex-1 px-4 py-3 rounded-lg capitalize font-bold transition-all ${
-                    scoringMode === mode
-                      ? "bg-secondary text-on-secondary shadow-sm"
-                      : "bg-transparent text-on-surface-variant hover:bg-surface-container-low"
-                  }`}
-                >
-                  {mode}
-                </button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {/* Player Card */}
+              {playerList.map((p, index) => {
+                const isHostPlayer = p.id === currentHostId;
+                const initials = p.nickname.slice(0, 2).toUpperCase();
+                // Pick alternating colors to match the stitched mock
+                const bgColor = index % 3 === 0 ? "bg-primary-container text-on-primary-container border-primary" 
+                              : index % 3 === 1 ? "bg-secondary-container text-on-secondary-container border-secondary"
+                                                : "bg-tertiary-container text-on-tertiary-container border-tertiary";
+                return (
+                  <div key={p.id} className="bg-surface-container-lowest p-4 rounded-lg flex flex-col items-center gap-3 border border-outline-variant/10 shadow-sm">
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center font-headline text-xl font-bold border-2 ${bgColor}`}>
+                        {initials}
+                    </div>
+                    <span className="font-semibold text-center truncate w-full">{p.nickname} {isHostPlayer ? "(Host)" : ""}</span>
+                  </div>
+                );
+              })}
+              
+              {/* Empty Slots */}
+              {Array.from({ length: Math.max(0, 8 - playerList.length) }).map((_, i) => (
+                <div key={i} className="bg-surface-container-high/30 p-4 rounded-lg flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant/20 h-32">
+                  <span className="material-symbols-outlined text-outline-variant">person_add</span>
+                  <span className="font-label text-xs text-outline-variant uppercase">Waiting...</span>
+                </div>
               ))}
             </div>
           </div>
+          
+          {/* Game Tip */}
+          <div className="bg-tertiary-container/20 p-6 rounded-lg border-2 border-tertiary/20 flex items-start gap-4 shadow-sm">
+            <span className="material-symbols-outlined text-tertiary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+            <p className="text-sm font-medium italic text-on-surface">Tip: Don't worry about being a good artist! The funniest rounds come from the most "creative" interpretations.</p>
+          </div>
+        </div>
 
-          {error && <p className="text-sm font-bold text-error bg-error-container/20 px-4 py-3 rounded-xl">{error}</p>}
+        {/* Right Column: Host Controls / Status */}
+        <div className="lg:col-span-5 flex flex-col gap-6">
+          {isHost ? (
+            /* Host View Container */
+            <div className="bg-surface-container-lowest p-8 rounded-lg paper-stack-2 border-outline-variant/20 border shadow-sm">
+              <h2 className="font-headline text-2xl font-extrabold text-secondary mb-8">Game Settings</h2>
+              
+              {/* Rounds Selector */}
+              <div className="mb-8">
+                <label className="font-label text-xs font-bold text-outline uppercase mb-3 block">Number of Rounds</label>
+                <div className="flex items-center justify-between bg-surface-container-low p-2 rounded-full border border-outline-variant/10">
+                  <button 
+                    onClick={() => setNumRounds(Math.max(3, numRounds - 1))}
+                    className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center hover:bg-surface-variant transition-colors active:scale-90"
+                  >
+                    <span className="material-symbols-outlined font-bold">remove</span>
+                  </button>
+                  <span className="font-headline text-2xl font-black">{numRounds}</span>
+                  <button 
+                    onClick={() => setNumRounds(Math.min(8, numRounds + 1))}
+                    className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center hover:bg-surface-variant transition-colors active:scale-90"
+                  >
+                    <span className="material-symbols-outlined font-bold">add</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-outline mt-2 px-2 uppercase font-label">Estimated time: {numRounds * 3} mins</p>
+              </div>
 
-          <button
-            onClick={handleStart}
-            disabled={!canStart || starting}
-            className="w-full mt-2 py-4 rounded-xl text-xl font-black font-display bg-primary text-on-primary shadow-sketch shadow-primary-dim active:shadow-none active:translate-y-[2px] active:translate-x-[2px] active:scale-[0.98] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:shadow-sketch disabled:active:scale-100 transition-all transform rotate-1"
-          >
-            {starting ? "Starting…" : "Start Game"}
-          </button>
-        </section>
-      )}
-    </div>
+              {/* Scoring Toggle */}
+              <div className="mb-10">
+                <label className="font-label text-xs font-bold text-outline uppercase mb-3 block">Scoring Mode</label>
+                <div className="grid grid-cols-2 gap-2 bg-surface-container-low p-1 rounded-xl">
+                  {(["friendly", "competitive"] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setScoringMode(mode)}
+                      className={`py-3 px-4 rounded-lg font-bold text-sm capitalize transition-all active:scale-95 ${
+                        scoringMode === mode
+                          ? "bg-surface-container-lowest text-secondary sketch-shadow-secondary border border-secondary"
+                          : "text-outline-variant hover:bg-surface-container-high border border-transparent"
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Room Code Display */}
+              <div className="bg-secondary-container/30 p-6 rounded-xl text-center mb-8 border border-secondary/10">
+                <span className="font-label text-xs font-bold text-secondary uppercase block mb-1">Room Code</span>
+                <div className="font-label text-4xl font-extrabold tracking-[0.2em] text-on-secondary-container">{code}</div>
+              </div>
+
+              {/* Start Button */}
+              <div className="flex flex-col gap-3">
+                {error && <p className="text-center text-sm font-bold text-error bg-error-container/20 px-4 py-3 rounded-xl">{error}</p>}
+                <button
+                  onClick={handleStart}
+                  disabled={!canStart || starting}
+                  className={`w-full py-5 rounded-xl font-headline text-xl font-extrabold flex items-center justify-center gap-3 transition-all ${
+                    canStart && !starting
+                      ? "bg-primary text-on-primary sketch-shadow-primary active:scale-95 active:shadow-none"
+                      : "bg-surface-container-lowest border-2 border-outline-variant/30 text-outline-variant cursor-not-allowed grayscale"
+                  }`}
+                >
+                  <span className="material-symbols-outlined">{starting ? "hourglass_empty" : "play_arrow"}</span>
+                  {starting ? "Starting..." : "Start Game"}
+                </button>
+                {!canStart && (
+                  <p className="text-center text-xs font-bold text-error uppercase font-label">Need {4 - playerList.length} more player{4 - playerList.length !== 1 ? 's' : ''} to start</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Waiting View */
+            <div className="bg-surface-container-lowest p-8 rounded-lg paper-stack-2 border-outline-variant/20 border shadow-sm text-center py-16">
+              <div className="bg-secondary-container/30 w-full p-6 rounded-xl text-center mb-10 border border-secondary/10 shadow-sm">
+                <span className="font-label text-xs font-bold text-secondary uppercase block mb-1 tracking-widest">Room Code</span>
+                <div className="font-label text-4xl font-extrabold tracking-[0.2em] text-on-secondary-container">{code}</div>
+              </div>
+
+              <div className="mb-8 flex justify-center">
+                <div className="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center relative">
+                  <span className="material-symbols-outlined text-5xl text-primary animate-bounce">brush</span>
+                  <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-spin" style={{ animationDuration: "10s" }}></div>
+                </div>
+              </div>
+              <h2 className="font-headline text-2xl font-extrabold mb-4 text-on-surface">Waiting for host...</h2>
+              <p className="text-on-surface-variant font-medium">The host is currently picking the perfect game settings. Get your digital pens ready!</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </main>
   );
 }

@@ -40,43 +40,35 @@ export default async function LobbyPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-surface">
-      <p className="text-sm text-on-surface-variant font-label uppercase tracking-[0.15em] mb-2 pl-1 transform rotate-1">
-        Room Code
-      </p>
-      <div className="bg-secondary-container text-on-secondary-container px-8 py-4 rounded-2xl font-label text-5xl md:text-6xl tracking-[0.1em] font-bold mb-10 transform -rotate-1 shadow-sm">
-        {upperCode}
-      </div>
-      {room.status === "lobby" && isHost && (
-        <p className="text-sm text-on-surface-variant mb-8 font-body">
-          Big screen?{" "}
-          <a href={`/room/${upperCode}/host`} className="text-secondary font-bold underline hover:text-secondary-dim transition-colors">
-            Open host view
-          </a>
-        </p>
-      )}
-      {room.status === "lobby" && !isHost && (
-        <p className="text-on-surface-variant font-body mb-8 italic opacity-80">
-          Waiting for host to start…
-        </p>
-      )}
+    <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
+      {/* TopAppBar */}
+      <header className="bg-surface docked full-width top-0 z-50">
+        <div className="flex justify-between items-center w-full px-6 py-4">
+          <button className="hover:bg-surface-variant/50 rounded-full p-2 active:scale-95 transition-transform duration-150">
+            <span className="material-symbols-outlined text-primary">help</span>
+          </button>
+          <h1 className="font-headline font-bold tracking-widest uppercase text-2xl font-black text-primary">Telestrations</h1>
+          <button className="hover:bg-surface-variant/50 rounded-full p-2 active:scale-95 transition-transform duration-150 text-primary">
+            <span className="material-symbols-outlined text-primary">settings</span>
+          </button>
+        </div>
+        <div className="bg-surface-variant h-px w-full"></div>
+      </header>
 
-      <div className="w-full max-w-md">
-        <LobbyPlayerList
-          code={upperCode}
-          initialPlayers={playerList}
-          hostPlayerId={room.hostPlayerId ?? ""}
-          playerId={playerId ?? ""}
-          isHost={isHost}
-          initialNumRounds={room.numRounds}
-          initialScoringMode={room.scoringMode}
-          initialStatus={room.status}
-          initialRoundId={initialRoundId}
-          initialTimerStartedAt={initialTimerStartedAt}
-          initialRevealBookIndex={room.revealBookIndex}
-          initialRevealEntryIndex={room.revealEntryIndex}
-        />
-      </div>
-    </main>
+      <LobbyPlayerList
+        code={upperCode}
+        initialPlayers={playerList}
+        hostPlayerId={room.hostPlayerId ?? ""}
+        playerId={playerId ?? ""}
+        isHost={isHost}
+        initialNumRounds={room.numRounds}
+        initialScoringMode={room.scoringMode}
+        initialStatus={room.status}
+        initialRoundId={initialRoundId}
+        initialTimerStartedAt={initialTimerStartedAt}
+        initialRevealBookIndex={room.revealBookIndex}
+        initialRevealEntryIndex={room.revealEntryIndex}
+      />
+    </div>
   );
 }
