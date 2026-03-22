@@ -6,7 +6,9 @@ A web-based multiplayer Telestrations party game. Players join via room code, dr
 
 ## Current Status
 
-Issue #27 (Debug Tool) in PR #29 (branch `feat/debug-tool-issue-27`) — complete. 183 Vitest tests passing. Issue #12 (PR #28), #11 (PR #26), #9 (PR #24), #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
+Issue #13 (Competitive Scoring) in PR #30 (branch `feat/competitive-scoring-issue-13`) — complete. 205 Vitest tests passing. Issue #27 (PR #29), #12 (PR #28), #11 (PR #26), #9 (PR #24), #8 (PR #22), #6 (PR #20) merged. Provision Neon + Ably and fill in `.env.local` before running.
+
+Key additions in issue #13: `competitive-score-service` (`tallyCompetitiveScores`: uses `ownerOverride ?? fuzzyCorrect` to determine correctness, writes `correct_guess` + `drawing_credited` score rows); `PATCH /api/entries/[id]/override` (book-owner-only, sets `ownerOverride`); `entry-service.submitEntry` extended with optional `scoringMode` param — computes `fuzzyCorrect` for guess entries in competitive mode; `POST /api/rooms/[code]/tally` branches on `scoringMode`; `POST /api/entries` resolves `scoringMode` via book→round→room join before calling `submitEntry`; `drawing_credited` added to `scoreReasonEnum`.
 
 Key additions in issue #27: `DebugService` (`createSession`, `getSessionState`, `performAction`); debug API routes; `/debug` page with `DebugDashboard`. Per-tab player identity via `X-Debug-Player-Id` header: `debug-fetch.ts` wrapper injects header from `sessionStorage`; `get-player-id.ts` helper checks header before cookie in dev; all 11 player-facing API routes use `getPlayerId()`; `as-player` redirect uses `?debugPlayerId=` URL param (not cookie); `LobbyPlayerList` reads param on mount, stores to sessionStorage, resets Ably client; all screen components use `debugFetch`. Sessions stored in `globalThis.__debugSessions__` Map to survive hot-reloads.
 
