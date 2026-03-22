@@ -58,10 +58,8 @@ function makeInsertMock(returning: unknown[] = []) {
 // ── Test data ─────────────────────────────────────────────────────────────────
 
 const ROOM_ID = "room-1";
-const ROUND_ID = "round-1";
 const BOOK_ID = "book-1";
 
-const OWNER_PLAYER_ID = "player-owner";
 const GUESSER_PLAYER_ID = "player-guesser";
 const ARTIST_PLAYER_ID = "player-artist";
 
@@ -91,12 +89,6 @@ const DRAWING_ENTRY = {
   ownerOverride: null,
 };
 
-const BOOK_ROW = {
-  id: BOOK_ID,
-  roundId: ROUND_ID,
-  ownerPlayerId: OWNER_PLAYER_ID,
-  originalPrompt: "A cat",
-};
 
 // ── tallyCompetitiveScores ────────────────────────────────────────────────────
 

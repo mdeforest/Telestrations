@@ -69,7 +69,6 @@ const ROOM_ID = "room-1";
 const ROOM_CODE = "ABCDEF";
 const HOST_ID = "host-player-1";
 const WRONG_PLAYER_ID = "player-99";
-const ROUND_1_ID = "round-1";
 const ROUND_2_ID = "round-2";
 
 const BOOK_1_ID = "book-1";

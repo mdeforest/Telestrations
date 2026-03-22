@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import { rooms, players, books, rounds, entries } from "@/lib/db/schema";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 
 export async function GET(
   _req: NextRequest,
@@ -25,20 +25,20 @@ export async function GET(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  // Fetch all rounds for this room ordered by roundNumber
-  const roomRounds = await db
+  // Scope to the current round only (currentRound=0 means round 1)
+  const currentRoundNumber = Math.max(room.currentRound ?? 0, 1);
+  const [currentRound] = await db
     .select()
     .from(rounds)
-    .where(eq(rounds.roomId, room.id))
-    .orderBy(asc(rounds.roundNumber));
+    .where(
+      and(eq(rounds.roomId, room.id), eq(rounds.roundNumber, currentRoundNumber))
+    );
 
-  const roundIds = roomRounds.map((r) => r.id);
-
-  if (roundIds.length === 0) {
+  if (!currentRound) {
     return NextResponse.json({ books: [] });
   }
 
-  // Fetch all books with their owner player, ordered by round then seat
+  // Fetch books for the current round only, ordered by seat
   const bookRows = await db
     .select({
       id: books.id,
@@ -52,8 +52,8 @@ export async function GET(
     .from(books)
     .innerJoin(players, eq(books.ownerPlayerId, players.id))
     .innerJoin(rounds, eq(books.roundId, rounds.id))
-    .where(inArray(books.roundId, roundIds))
-    .orderBy(asc(rounds.roundNumber), asc(players.seatOrder));
+    .where(eq(books.roundId, currentRound.id))
+    .orderBy(asc(players.seatOrder));
 
   const bookIds = bookRows.map((b) => b.id);
 
