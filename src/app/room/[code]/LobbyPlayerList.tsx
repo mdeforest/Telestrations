@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAblyClient } from "@/lib/realtime/client";
+import { getAblyClient, resetAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 import { PromptSelectionScreen } from "./PromptSelectionScreen";
 import { DrawingPhaseScreen } from "./DrawingPhaseScreen";
 import { GuessingPhaseScreen } from "./GuessingPhaseScreen";
@@ -60,6 +61,23 @@ export function LobbyPlayerList({
   const canStart = playerList.length >= 4;
 
   useEffect(() => {
+    // If this tab was opened via the debug "Open as Player" link, extract the
+    // debugPlayerId URL param, persist it to sessionStorage, and strip from URL.
+    // Must happen before getAblyClient() so the token request carries the header.
+    const urlParams = new URLSearchParams(window.location.search);
+    const debugId = urlParams.get("debugPlayerId");
+    if (debugId) {
+      sessionStorage.setItem("debugPlayerId", debugId);
+      urlParams.delete("debugPlayerId");
+      const newSearch = urlParams.toString();
+      history.replaceState(
+        null,
+        "",
+        window.location.pathname + (newSearch ? `?${newSearch}` : "")
+      );
+      resetAblyClient();
+    }
+
     const ably = getAblyClient();
 
     const playersCh = ably.channels.get(channels.roomPlayers(code));
@@ -113,7 +131,7 @@ export function LobbyPlayerList({
   useEffect(() => {
     if (status !== "active" || !roundId) return;
 
-    fetch(`/api/rounds/${roundId}/my-entry`)
+    debugFetch(`/api/rounds/${roundId}/my-entry`)
       .then((r) => r.json())
       .then((data: { type?: "drawing" | "guess"; incomingContent?: string | null }) => {
         if (data.type) setPassType(data.type);
@@ -126,7 +144,7 @@ export function LobbyPlayerList({
     setStarting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/rooms/${code}/start`, {
+      const res = await debugFetch(`/api/rooms/${code}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ numRounds, scoringMode }),

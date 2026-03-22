@@ -12,12 +12,12 @@ import { NextRequest } from "next/server";
 // Queue responses with terminal.mockResolvedValueOnce([...]) in call order.
 
 const mocks = vi.hoisted(() => ({
-  cookieGet: vi.fn(),
+  getPlayerId: vi.fn(),
   terminal: vi.fn(),
 }));
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: mocks.cookieGet }),
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mocks.getPlayerId,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -103,14 +103,14 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
 
   // ── Auth ────────────────────────────────────────────────────────────────────
   it("returns 401 when playerId cookie is missing", async () => {
-    mocks.cookieGet.mockReturnValue(undefined);
+    mocks.getPlayerId.mockResolvedValue(undefined);
     const res = await GET(makeReq(), makeParams());
     expect(res.status).toBe(401);
   });
 
   // ── Room not found ──────────────────────────────────────────────────────────
   it("returns 404 when room does not exist", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.terminal.mockResolvedValueOnce([]); // room lookup → empty
 
     const res = await GET(makeReq(), makeParams());
@@ -119,7 +119,7 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
 
   // ── Empty room (no rounds) ──────────────────────────────────────────────────
   it("returns empty books array when room has no rounds", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.terminal.mockResolvedValueOnce([ROOM]); // room
     mocks.terminal.mockResolvedValueOnce([]);     // rounds → empty
 
@@ -131,7 +131,7 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
 
   // ── Happy path ──────────────────────────────────────────────────────────────
   it("returns books with entries and current reveal indices", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.terminal.mockResolvedValueOnce([ROOM]);   // room
     mocks.terminal.mockResolvedValueOnce([ROUND]);  // rounds
     mocks.terminal.mockResolvedValueOnce([BOOK]);   // books (double join)
@@ -156,7 +156,7 @@ describe("GET /api/rooms/[code]/reveal/books", () => {
     const BOOK_2 = { ...BOOK, id: "book-2", ownerPlayerId: "player-2", ownerNickname: "Bob", ownerSeatOrder: 2 };
     const ENTRY_2 = { ...ENTRY, id: "entry-2", bookId: "book-2" };
 
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
     mocks.terminal.mockResolvedValueOnce([ROOM]);
     mocks.terminal.mockResolvedValueOnce([ROUND]);
     mocks.terminal.mockResolvedValueOnce([BOOK, BOOK_2]);

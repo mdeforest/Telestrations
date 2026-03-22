@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import {
   createVoteService,
@@ -11,8 +11,7 @@ const VALID_VOTE_TYPES = ["favorite_sketch", "favorite_guess"] as const;
 type VoteType = (typeof VALID_VOTE_TYPES)[number];
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const playerId = cookieStore.get("playerId")?.value;
+  const playerId = await getPlayerId();
 
   if (!playerId) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

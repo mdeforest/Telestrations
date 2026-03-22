@@ -4,12 +4,12 @@ import { NextRequest } from "next/server";
 // ── Hoisted shared mock state ──────────────────────────────────────────────────
 
 const mocks = vi.hoisted(() => ({
-  cookieGet: vi.fn(),
+  getPlayerId: vi.fn(),
   dbSelect: vi.fn(),
 }));
 
-vi.mock("next/headers", () => ({
-  cookies: () => Promise.resolve({ get: mocks.cookieGet }),
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mocks.getPlayerId,
 }));
 
 vi.mock("@/lib/db", () => ({ db: { select: mocks.dbSelect } }));
@@ -37,13 +37,13 @@ describe("GET /api/rooms/[code]/leaderboard", () => {
   });
 
   it("returns 401 when playerId cookie is missing", async () => {
-    mocks.cookieGet.mockReturnValue(undefined);
+    mocks.getPlayerId.mockResolvedValue(undefined);
     const res = await GET(makeReq(), makeParams());
     expect(res.status).toBe(401);
   });
 
   it("returns 404 when the room does not exist", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
 
     // First select: room lookup → empty
     mocks.dbSelect.mockImplementationOnce(() => ({
@@ -57,7 +57,7 @@ describe("GET /api/rooms/[code]/leaderboard", () => {
   });
 
   it("returns players ranked by total points descending", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
 
     // First select: room lookup
     mocks.dbSelect.mockImplementationOnce(() => ({
@@ -93,7 +93,7 @@ describe("GET /api/rooms/[code]/leaderboard", () => {
   });
 
   it("returns an empty leaderboard when there are no scores", async () => {
-    mocks.cookieGet.mockReturnValue({ value: "player-1" });
+    mocks.getPlayerId.mockResolvedValue("player-1");
 
     // Room lookup
     mocks.dbSelect.mockImplementationOnce(() => ({

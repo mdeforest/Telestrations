@@ -1,9 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// ── Mock next/headers ─────────────────────────────────────────────────────────
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(),
+// ── Mock @/lib/debug/get-player-id ────────────────────────────────────────────
+const { mockGetPlayerId } = vi.hoisted(() => ({ mockGetPlayerId: vi.fn() }));
+vi.mock("@/lib/debug/get-player-id", () => ({
+  getPlayerId: mockGetPlayerId,
 }));
 
 // ── Mock @/lib/db ─────────────────────────────────────────────────────────────
@@ -15,7 +16,6 @@ vi.mock("drizzle-orm", async (importOriginal) => {
   return { ...actual };
 });
 
-import { cookies } from "next/headers";
 import { GET } from "../my-entry/route";
 import { NextRequest } from "next/server";
 
@@ -30,8 +30,7 @@ function makeParams(id: string) {
 }
 
 function mockCookies(playerId: string | undefined) {
-  const get = vi.fn().mockReturnValue(playerId ? { value: playerId } : undefined);
-  (cookies as ReturnType<typeof vi.fn>).mockResolvedValue({ get });
+  mockGetPlayerId.mockResolvedValue(playerId);
 }
 
 // ── Test data ─────────────────────────────────────────────────────────────────
@@ -39,6 +38,7 @@ function mockCookies(playerId: string | undefined) {
 const ROUND_ID = "round-1";
 const BOOK_ID = "book-1";
 const PLAYER_ID = "player-1";
+const ORIGINAL_PROMPT = "a fire-breathing cat";
 
 const ROUND_ROW = { id: ROUND_ID, roomId: "room-1", currentPass: 2 };
 
@@ -71,7 +71,7 @@ describe("GET /api/rounds/[id]/my-entry", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns type for a drawing-pass entry", async () => {
+  it("returns originalPrompt as incomingContent for a drawing pass 1 entry", async () => {
     mockCookies(PLAYER_ID);
 
     const { db } = await import("@/lib/db");
@@ -89,6 +89,12 @@ describe("GET /api/rounds/[id]/my-entry", () => {
             ]),
           }),
         }),
+      })
+      .mockReturnValueOnce({
+        // books query for originalPrompt
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ originalPrompt: ORIGINAL_PROMPT }]),
+        }),
       });
 
     (db as unknown as Record<string, unknown>).select = selectMock;
@@ -98,7 +104,46 @@ describe("GET /api/rounds/[id]/my-entry", () => {
 
     expect(res.status).toBe(200);
     expect(body.type).toBe("drawing");
-    expect(body.incomingContent).toBeNull();
+    expect(body.incomingContent).toBe(ORIGINAL_PROMPT);
+  });
+
+  it("returns previous guess as incomingContent for a drawing pass 3+ entry", async () => {
+    mockCookies(PLAYER_ID);
+
+    const GUESS_TEXT = "a volcano shark";
+    const ROUND_ROW_PASS3 = { ...ROUND_ROW, currentPass: 3 };
+
+    const { db } = await import("@/lib/db");
+    const selectMock = vi.fn()
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([ROUND_ROW_PASS3]),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              { bookId: BOOK_ID, passNumber: 3, submittedAt: null, type: "drawing" },
+            ]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        // previous-pass guess query
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ content: GUESS_TEXT }]),
+        }),
+      });
+
+    (db as unknown as Record<string, unknown>).select = selectMock;
+
+    const res = await GET(makeRequest(), makeParams(ROUND_ID));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.type).toBe("drawing");
+    expect(body.incomingContent).toBe(GUESS_TEXT);
   });
 
   it("returns type and incomingContent for a guess-pass entry", async () => {

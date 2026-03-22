@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 
@@ -69,7 +70,7 @@ export function PlayerRevealScreen({
 
   // Fetch all book+entry data on mount
   useEffect(() => {
-    fetch(`/api/rooms/${code}/reveal/books`)
+    debugFetch(`/api/rooms/${code}/reveal/books`)
       .then((r) => r.json())
       .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number; status: string }) => {
         setBooks(data.books);
@@ -140,7 +141,7 @@ export function PlayerRevealScreen({
     if (advancing) return;
     setAdvancing(true);
     try {
-      await fetch(`/api/rooms/${code}/reveal/advance`, { method: "POST" });
+      await debugFetch(`/api/rooms/${code}/reveal/advance`, { method: "POST" });
     } finally {
       setAdvancing(false);
     }
@@ -154,7 +155,7 @@ export function PlayerRevealScreen({
 
     if (selection.sketchEntryId) {
       votePromises.push(
-        fetch("/api/votes", {
+        debugFetch("/api/votes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -167,7 +168,7 @@ export function PlayerRevealScreen({
     }
     if (selection.guessEntryId) {
       votePromises.push(
-        fetch("/api/votes", {
+        debugFetch("/api/votes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

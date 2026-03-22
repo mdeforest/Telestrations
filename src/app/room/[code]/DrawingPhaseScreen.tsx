@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getAblyClient } from "@/lib/realtime/client";
+import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 
@@ -29,10 +30,11 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // bookId and passNumber are loaded from the drawing-status endpoint
+  // bookId, passNumber, and the word to draw are loaded from the my-entry endpoint
   const [entryInfo, setEntryInfo] = useState<{
     bookId: string;
     passNumber: number;
+    wordToDraw: string | null;
   } | null>(null);
 
   // Countdown — recomputes every second from server-authoritative timerStartedAt
@@ -53,13 +55,13 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
 
   // Load the player's own entry info (bookId + passNumber) for submission
   useEffect(() => {
-    fetch(`/api/rounds/${roundId}/my-entry`)
+    debugFetch(`/api/rounds/${roundId}/my-entry`)
       .then((r) => r.json())
-      .then((data: { bookId?: string; passNumber?: number; alreadySubmitted?: boolean }) => {
+      .then((data: { bookId?: string; passNumber?: number; alreadySubmitted?: boolean; incomingContent?: string | null }) => {
         if (data.alreadySubmitted) {
           setSubmitted(true);
         } else if (data.bookId && data.passNumber) {
-          setEntryInfo({ bookId: data.bookId, passNumber: data.passNumber });
+          setEntryInfo({ bookId: data.bookId, passNumber: data.passNumber, wordToDraw: data.incomingContent ?? null });
         }
       })
       .catch(() => {/* non-fatal — submit button stays disabled */});
@@ -92,7 +94,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
     setError(null);
 
     try {
-      const res = await fetch("/api/entries", {
+      const res = await debugFetch("/api/entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -156,6 +158,13 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
       >
         {timeLabel}
       </div>
+
+      {entryInfo?.wordToDraw && (
+        <div className="text-center">
+          <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Draw this</p>
+          <p className="text-2xl font-bold text-gray-900">{entryInfo.wordToDraw}</p>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
