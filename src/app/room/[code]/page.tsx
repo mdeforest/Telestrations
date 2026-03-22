@@ -40,35 +40,43 @@ export default async function LobbyPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
-      <h1 className="text-6xl font-black tracking-widest mb-8">{upperCode}</h1>
+    <main className="min-h-screen flex flex-col items-center justify-center p-8 bg-surface">
+      <p className="text-sm text-on-surface-variant font-label uppercase tracking-[0.15em] mb-2 pl-1 transform rotate-1">
+        Room Code
+      </p>
+      <div className="bg-secondary-container text-on-secondary-container px-8 py-4 rounded-2xl font-label text-5xl md:text-6xl tracking-[0.1em] font-bold mb-10 transform -rotate-1 shadow-sm">
+        {upperCode}
+      </div>
       {room.status === "lobby" && isHost && (
-        <p className="text-xs text-gray-400 mb-6">
+        <p className="text-sm text-on-surface-variant mb-8 font-body">
           Big screen?{" "}
-          <a href={`/room/${upperCode}/host`} className="underline">
+          <a href={`/room/${upperCode}/host`} className="text-secondary font-bold underline hover:text-secondary-dim transition-colors">
             Open host view
           </a>
         </p>
       )}
       {room.status === "lobby" && !isHost && (
-        <p className="text-gray-500 mb-6">Waiting for host to start…</p>
+        <p className="text-on-surface-variant font-body mb-8 italic opacity-80">
+          Waiting for host to start…
+        </p>
       )}
 
-      <LobbyPlayerList
-        code={upperCode}
-        initialPlayers={playerList}
-        hostPlayerId={room.hostPlayerId ?? ""}
-        playerId={playerId ?? ""}
-        isHost={isHost}
-        initialNumRounds={room.numRounds}
-        initialScoringMode={room.scoringMode}
-        initialStatus={room.status}
-        initialRoundId={initialRoundId}
-        initialTimerStartedAt={initialTimerStartedAt}
-        initialRevealBookIndex={room.revealBookIndex}
-        initialRevealEntryIndex={room.revealEntryIndex}
-      />
+      <div className="w-full max-w-md">
+        <LobbyPlayerList
+          code={upperCode}
+          initialPlayers={playerList}
+          hostPlayerId={room.hostPlayerId ?? ""}
+          playerId={playerId ?? ""}
+          isHost={isHost}
+          initialNumRounds={room.numRounds}
+          initialScoringMode={room.scoringMode}
+          initialStatus={room.status}
+          initialRoundId={initialRoundId}
+          initialTimerStartedAt={initialTimerStartedAt}
+          initialRevealBookIndex={room.revealBookIndex}
+          initialRevealEntryIndex={room.revealEntryIndex}
+        />
+      </div>
     </main>
   );
 }

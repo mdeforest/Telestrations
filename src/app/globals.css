@@ -1,3 +1,27 @@
+@import 'material-symbols/outlined.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    background-color: theme('colors.surface');
+    color: theme('colors.on-surface');
+  }
+}
+
+
+
+.sketch-shadow-primary {
+    box-shadow: 4px 4px 0px 0px var(--tw-color-primary-dim, #962700);
+}
+.sketch-shadow-secondary {
+    box-shadow: 4px 4px 0px 0px var(--tw-color-secondary-dim, #00528b);
+}
+.paper-stack-1 {
+    transform: rotate(-1deg);
+}
+.paper-stack-2 {
+    transform: rotate(1.5deg);
+}

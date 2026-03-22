@@ -19,6 +19,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "ably": "^2.20.0",
     "drizzle-orm": "^0.45.1",
+    "material-symbols": "^0.42.3",
     "next": "^16.1.7",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",

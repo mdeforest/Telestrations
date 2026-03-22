@@ -103,24 +103,26 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
   }, [replayStrokes]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <canvas
-        ref={canvasRef}
-        width={400}
-        height={400}
-        className="border border-gray-300 touch-none bg-white"
-        onMouseDown={readOnly ? undefined : startDrawing}
-        onMouseMove={readOnly ? undefined : continueDrawing}
-        onMouseUp={readOnly ? undefined : endDrawing}
-        onMouseLeave={readOnly ? undefined : endDrawing}
-        onTouchStart={readOnly ? undefined : startDrawing}
-        onTouchMove={readOnly ? undefined : continueDrawing}
-        onTouchEnd={readOnly ? undefined : endDrawing}
-      />
+    <div className="flex flex-col gap-6 bg-surface-container p-4 sm:p-6 rounded-[2.5rem] shadow-ambient max-w-md w-full mx-auto transform rotate-1">
+      <div className="bg-surface-container-high p-2 rounded-3xl">
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={400}
+          className="bg-surface-container-lowest touch-none rounded-2xl w-full h-auto object-contain cursor-crosshair shadow-sm"
+          onMouseDown={readOnly ? undefined : startDrawing}
+          onMouseMove={readOnly ? undefined : continueDrawing}
+          onMouseUp={readOnly ? undefined : endDrawing}
+          onMouseLeave={readOnly ? undefined : endDrawing}
+          onTouchStart={readOnly ? undefined : startDrawing}
+          onTouchMove={readOnly ? undefined : continueDrawing}
+          onTouchEnd={readOnly ? undefined : endDrawing}
+        />
+      </div>
       {!readOnly && (
-        <>
-          <div className="flex items-center gap-2">
-            <label htmlFor="brush-size">Brush size</label>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4 font-label text-sm text-on-surface-variant bg-surface-container-low px-4 py-3 rounded-2xl transform -rotate-1">
+            <label htmlFor="brush-size" className="uppercase tracking-wider font-bold">Brush</label>
             <input
               id="brush-size"
               type="range"
@@ -128,17 +130,18 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
               max={20}
               value={brushSize}
               onChange={(e) => setBrushSize(Number(e.target.value))}
+              className="flex-1 accent-secondary"
             />
-            <span>{brushSize}px</span>
+            <span className="w-8 text-right font-mono font-bold">{brushSize}px</span>
           </div>
           <button
             onClick={handleSubmit}
             disabled={disabled}
-            className="w-full py-3 rounded-xl font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+            className="w-full py-4 rounded-xl text-xl font-black font-display bg-primary text-on-primary shadow-sketch shadow-primary-dim active:shadow-none active:translate-y-[2px] active:translate-x-[2px] active:scale-[0.98] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:shadow-sketch disabled:active:scale-100 transition-all transform rotate-1"
           >
             {disabled ? "Submitting…" : "Submit Drawing"}
           </button>
-        </>
+        </div>
       )}
     </div>
   );

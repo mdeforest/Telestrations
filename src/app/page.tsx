@@ -40,51 +40,100 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-8">
-      <h1 className="text-5xl font-black tracking-tight">Telestrations</h1>
-
-      <div className="w-full max-w-xs flex flex-col gap-4">
-        <input
-          type="text"
-          placeholder="Your nickname"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          className="border rounded-xl px-4 py-3 text-lg w-full"
-          onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-        />
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <button
-          onClick={handleCreate}
-          disabled={!nickname.trim() || loading}
-          className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 hover:bg-blue-700 transition-colors"
-        >
-          Create Room
-        </button>
-
-        <div className="flex items-center gap-3 text-gray-400 text-sm">
-          <hr className="flex-1" /> or join <hr className="flex-1" />
+    <main className="flex-grow flex flex-col items-center justify-center px-6 pt-24 pb-32 min-h-screen">
+      <div className="text-center mb-12 relative">
+        <div className="absolute -top-8 -left-8 opacity-20 transform -rotate-12">
+          <span className="material-symbols-outlined text-7xl text-primary" data-icon="brush">brush</span>
         </div>
+        <h2 className="font-headline text-6xl md:text-7xl font-extrabold text-primary tracking-tight mb-2">
+            Telestrations
+        </h2>
+        <p className="font-label text-tertiary font-bold uppercase tracking-[0.2em] text-sm">The Visual Telephone Game</p>
+      </div>
 
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-            maxLength={6}
-            className="border rounded-xl px-4 py-3 text-lg w-28 uppercase tracking-widest font-mono"
-            onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-          />
-          <button
-            onClick={handleJoin}
-            disabled={!nickname.trim() || !joinCode.trim() || loading}
-            className="flex-1 py-3 rounded-xl text-lg font-bold bg-gray-800 text-white disabled:opacity-40 hover:bg-gray-900 transition-colors"
-          >
-            Join
-          </button>
+      <div className="relative w-full max-w-md">
+        <div className="absolute inset-0 bg-surface-container-high rounded-lg paper-stack-1 shadow-sm"></div>
+        <div className="absolute inset-0 bg-surface-container rounded-lg paper-stack-2 shadow-sm"></div>
+        
+        <div className="relative bg-surface-container-lowest p-8 md:p-10 rounded-lg shadow-[0px_20px_40px_rgba(49,46,41,0.08)]">
+          <form className="space-y-8" onSubmit={(e) => { e.preventDefault(); handleCreate(); }}>
+            
+            <div className="space-y-2">
+              <label className="font-label text-sm font-bold text-on-surface-variant ml-2 flex items-center gap-2" htmlFor="nickname">
+                <span className="material-symbols-outlined text-lg" data-icon="face">face</span>
+                NICKNAME
+              </label>
+              <input 
+                className="w-full bg-surface-container-low border-0 rounded-DEFAULT p-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all focus:rotate-1" 
+                id="nickname" 
+                placeholder="Sketchy Artist..." 
+                type="text" 
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="font-label text-sm font-bold text-on-surface-variant ml-2 flex items-center gap-2" htmlFor="room-code">
+                <span className="material-symbols-outlined text-lg" data-icon="vpn_key">vpn_key</span>
+                ROOM CODE
+              </label>
+              <div className="relative">
+                <input 
+                  className="w-full bg-secondary-container/30 border-0 rounded-DEFAULT p-4 text-on-surface font-label font-bold text-2xl tracking-[0.3em] uppercase placeholder:text-outline-variant focus:ring-2 focus:ring-secondary/20 transition-all focus:-rotate-1" 
+                  id="room-code" 
+                  placeholder="A B C D" 
+                  type="text"
+                  maxLength={6}
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 pointer-events-none">
+                  <span className="material-symbols-outlined" data-icon="edit">edit</span>
+                </div>
+              </div>
+            </div>
+
+            {error && <p className="text-sm font-body text-error font-medium bg-error-container/20 px-4 py-3 rounded-xl">{error}</p>}
+
+            <div className="pt-4 flex flex-col gap-4">
+              <button 
+                className="group relative w-full bg-primary text-on-primary font-headline font-bold text-xl py-5 rounded-xl sketch-shadow-primary active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:sketch-shadow-primary disabled:active:scale-100" 
+                type="button"
+                onClick={handleJoin}
+                disabled={!nickname.trim() || !joinCode.trim() || loading}
+              >
+                Join Game
+                <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+              </button>
+
+              <button 
+                className="w-full bg-surface-container-low text-secondary font-headline font-bold text-lg py-4 rounded-xl border-2 border-dashed border-secondary/20 hover:bg-secondary/5 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" 
+                type="button"
+                onClick={handleCreate}
+                disabled={!nickname.trim() || loading}
+              >
+                <span className="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+                Create Room
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-8 flex items-start gap-3 p-4 bg-tertiary-container/20 rounded-DEFAULT">
+            <span className="material-symbols-outlined text-tertiary" data-icon="lightbulb">lightbulb</span>
+            <p className="text-xs text-on-tertiary-container leading-relaxed">
+              <span className="font-bold">Pro Tip:</span> No talent required! The worse the drawing, the funnier the outcome.
+            </p>
+          </div>
         </div>
+      </div>
+
+      <div className="fixed bottom-24 left-10 opacity-10 pointer-events-none hidden lg:block">
+        <span className="material-symbols-outlined text-9xl text-on-surface" data-icon="draw">draw</span>
+      </div>
+      <div className="fixed top-32 right-12 opacity-10 pointer-events-none hidden lg:block">
+        <span className="material-symbols-outlined text-8xl text-on-surface" data-icon="gesture">gesture</span>
       </div>
     </main>
   );

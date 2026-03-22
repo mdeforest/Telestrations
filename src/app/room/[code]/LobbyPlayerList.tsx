@@ -200,43 +200,49 @@ export function LobbyPlayerList({
   }
 
   return (
-    <div className="w-full max-w-xs flex flex-col gap-6">
-      <ul className="space-y-2">
-        {playerList.map((p) => (
+    <div className="w-full max-w-md flex flex-col gap-6 font-body">
+      <ul className="flex flex-col gap-4">
+        {playerList.map((p, index) => (
           <li
             key={p.id}
-            className="flex items-center gap-3 rounded-lg border px-4 py-3"
+            className={`flex items-center gap-4 rounded-2xl px-5 py-4 ${
+              index % 2 === 0 ? "bg-surface-container-low" : "bg-surface-container-high"
+            } transform ${index % 2 === 0 ? "-rotate-1" : "rotate-1"}`}
           >
-            <span className="text-sm text-gray-400 w-5 text-right">{p.seatOrder}</span>
-            <span className="font-medium">{p.nickname}</span>
+            <span className="text-sm font-label text-on-surface-variant w-5 text-right font-bold opacity-70">
+              {p.seatOrder}
+            </span>
+            <span className="font-bold text-on-surface text-xl font-display">{p.nickname}</span>
             {p.id === currentHostId && (
-              <span className="ml-auto text-xs text-blue-500">host</span>
+              <span className="ml-auto text-xs font-bold font-label uppercase tracking-widest text-secondary opacity-90">
+                host
+              </span>
             )}
           </li>
         ))}
       </ul>
 
       {isHost && (
-        <section className="flex flex-col gap-4 border-t pt-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
+        <section className="flex flex-col gap-6 mt-4 bg-surface-container p-6 sm:p-8 rounded-[2rem] shadow-ambient transform -rotate-1">
+          <h2 className="text-sm font-bold font-label text-on-surface-variant uppercase tracking-[0.15em]">
             Host Controls
           </h2>
 
           {!canStart && (
-            <p className="text-sm text-amber-600">
+            <p className="text-sm font-bold text-error bg-error-container/20 px-4 py-3 rounded-xl transform rotate-1">
               Need at least 4 players to start ({4 - playerList.length} more)
             </p>
           )}
 
           <div className="flex items-center justify-between">
-            <label htmlFor="rounds" className="font-medium">
+            <label htmlFor="rounds" className="font-bold font-display text-lg text-on-surface">
               Rounds
             </label>
             <select
               id="rounds"
               value={numRounds}
               onChange={(e) => setNumRounds(Number(e.target.value))}
-              className="border rounded px-3 py-1.5 text-base bg-white"
+              className="bg-surface-container-lowest rounded-xl px-4 py-2 text-lg font-bold font-body text-on-surface ring-1 ring-outline-variant/15 focus:ring-outline-variant/40 focus:outline-none transition-all cursor-pointer"
             >
               {[3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>
@@ -246,17 +252,17 @@ export function LobbyPlayerList({
             </select>
           </div>
 
-          <div className="flex items-center justify-between">
-            <span className="font-medium">Scoring</span>
-            <div className="flex rounded-lg border overflow-hidden text-sm">
+          <div className="flex flex-col gap-3">
+            <span className="font-bold font-display text-lg text-on-surface">Scoring Mode</span>
+            <div className="flex rounded-xl bg-surface-container-lowest p-1 ring-1 ring-outline-variant/15">
               {(["friendly", "competitive"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setScoringMode(mode)}
-                  className={`px-4 py-1.5 capitalize transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded-lg capitalize font-bold transition-all ${
                     scoringMode === mode
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
+                      ? "bg-secondary text-on-secondary shadow-sm"
+                      : "bg-transparent text-on-surface-variant hover:bg-surface-container-low"
                   }`}
                 >
                   {mode}
@@ -265,12 +271,12 @@ export function LobbyPlayerList({
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm font-bold text-error bg-error-container/20 px-4 py-3 rounded-xl">{error}</p>}
 
           <button
             onClick={handleStart}
             disabled={!canStart || starting}
-            className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+            className="w-full mt-2 py-4 rounded-xl text-xl font-black font-display bg-primary text-on-primary shadow-sketch shadow-primary-dim active:shadow-none active:translate-y-[2px] active:translate-x-[2px] active:scale-[0.98] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:shadow-sketch disabled:active:scale-100 transition-all transform rotate-1"
           >
             {starting ? "Starting…" : "Start Game"}
           </button>
