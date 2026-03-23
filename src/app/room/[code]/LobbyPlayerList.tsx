@@ -389,7 +389,7 @@ export function LobbyPlayerList({
           {/* Game Tip */}
           <div className="bg-tertiary-container/20 p-6 rounded-lg border-2 border-tertiary/20 flex items-start gap-4 shadow-sm">
             <span className="material-symbols-outlined text-tertiary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
-            <p className="text-sm font-medium italic text-on-surface">Tip: Don't worry about being a good artist! The funniest rounds come from the most "creative" interpretations.</p>
+            <p className="text-sm font-medium italic text-on-surface">Tip: Don&apos;t worry about being a good artist! The funniest rounds come from the most &ldquo;creative&rdquo; interpretations.</p>
           </div>
         </div>
 

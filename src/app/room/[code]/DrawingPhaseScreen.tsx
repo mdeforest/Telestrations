@@ -124,7 +124,6 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
   // Format seconds as MM:SS
   const minutes = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
-  const timeLabel = `${minutes}:${String(secs).padStart(2, "0")}`;
   const timerUrgent = secondsLeft <= 10;
 
   if (submitted) {

@@ -39,7 +39,6 @@ interface Props {
 
 /** Single entry in the timeline strip at footer */
 function TimelineStep({
-  content,
   type,
   isActive,
   isFuture,
@@ -177,7 +176,7 @@ export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialE
         <div className="text-center">
           <p className="font-label text-sm uppercase tracking-widest text-tertiary mb-3 font-bold">Game Over</p>
           <h1 className="font-headline text-6xl font-black text-on-surface mb-2">Leaderboard</h1>
-          <p className="text-on-surface-variant font-medium">Thanks for playing! Here's how everyone did:</p>
+          <p className="text-on-surface-variant font-medium">Thanks for playing! Here&apos;s how everyone did:</p>
         </div>
         <div className="w-full max-w-lg flex flex-col gap-4">
           {leaderboard.map((entry, i) => (

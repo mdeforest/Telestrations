@@ -27,7 +27,7 @@ export function GuessingWaitingScreen({ players, localPlayerId }: Props) {
       <section className="bg-surface-container-low rounded-xl p-6 transform rotate-[1.5deg] relative shadow-sm border border-outline-variant/10">
         <h3 className="font-label uppercase tracking-widest text-xs font-bold text-tertiary-dim mb-4 opacity-70">Room Status</h3>
         <div className="space-y-3">
-          {players.map((p, i) => {
+          {players.map((p) => {
             const isMe = p.id === localPlayerId;
             const initials = p.nickname.slice(0, 2).toUpperCase();
 
@@ -76,7 +76,7 @@ export function GuessingWaitingScreen({ players, localPlayerId }: Props) {
             <span className="font-label font-bold text-sm uppercase tracking-wider">Pro Tip</span>
           </div>
           <p className="font-body text-on-tertiary-container leading-relaxed font-medium">
-            Don't worry about being perfect; messy doodles win hearts! Sometimes the funniest guesses come from the most chaotic drawings.
+            Don&apos;t worry about being perfect; messy doodles win hearts! Sometimes the funniest guesses come from the most chaotic drawings.
           </p>
         </div>
       </section>

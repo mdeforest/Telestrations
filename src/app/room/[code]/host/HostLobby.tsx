@@ -47,7 +47,6 @@ export function HostLobby({
   const [revealBookIndex, setRevealBookIndex] = useState(initialRevealBookIndex);
   const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
   const [phoneConnected, setPhoneConnected] = useState(false);
-  const [showQr, setShowQr] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
   const [numRounds, setNumRounds] = useState(3);
   const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);

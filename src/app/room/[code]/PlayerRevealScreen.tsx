@@ -339,7 +339,7 @@ export function PlayerRevealScreen({
             </div>
           </div>
           <div className="bg-tertiary-container px-3 py-1.5 rounded-full text-on-tertiary-container font-label text-[10px] font-black uppercase tracking-widest shadow-inner border border-tertiary/20">
-            "{currentBook.originalPrompt}"
+            &ldquo;{currentBook.originalPrompt}&rdquo;
           </div>
         </div>
 
@@ -500,7 +500,7 @@ function VotePanel({ book, playerId, selection, onSelect, onSubmit, submitting }
                       : "bg-surface-container-high text-on-surface border-2 border-transparent hover:bg-surface-container-highest"
                   }`}
                 >
-                  {entry.authorNickname}'s drawing
+                  {entry.authorNickname}&apos;s drawing
                 </button>
               ))}
             </div>
