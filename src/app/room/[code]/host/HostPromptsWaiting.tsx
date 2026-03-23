@@ -64,7 +64,7 @@ export function HostPromptsWaiting({
   return (
     <div className="bg-surface font-body text-on-surface min-h-screen selection:bg-primary-container selection:text-on-primary-container w-full absolute top-0 left-0 right-0 z-10">
       {/* TopAppBar */}
-      <nav className="fixed top-0 left-0 w-full z-50 bg-[#fcf6ed]/95 dark:bg-stone-900/95 backdrop-blur-md px-8 py-6 flex justify-between items-center max-w-full lg:px-12 border-b-2 border-outline-variant/10 shadow-sm">
+      <nav className="fixed top-0 left-0 w-full z-50 bg-[#fcf6ed]/95 backdrop-blur-md px-8 py-6 flex justify-between items-center max-w-full lg:px-12 border-b-2 border-outline-variant/10 shadow-sm">
         <div className="flex items-center gap-6">
           <span className="text-3xl font-black text-primary truncate max-w-[200px] md:max-w-none">The Animated Sketchpad</span>
           <div className="bg-surface-variant h-8 w-1 mx-2 hidden md:block"></div>
@@ -169,7 +169,7 @@ export function HostPromptsWaiting({
       </main>
 
       {/* Footer Progress Section */}
-      <footer className="fixed bottom-0 left-0 w-full z-50 flex flex-col justify-center items-center px-6 lg:px-16 py-6 lg:py-8 bg-[#ffffff]/95 dark:bg-stone-950/95 backdrop-blur-md rounded-t-[3rem] border-t-2 border-[#e2dcd1] dark:border-stone-800 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
+      <footer className="fixed bottom-0 left-0 w-full z-50 flex flex-col justify-center items-center px-6 lg:px-16 py-6 lg:py-8 bg-[#ffffff]/95 backdrop-blur-md rounded-t-[3rem] border-t-2 border-[#e2dcd1] shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
         <div className="w-full max-w-4xl mx-auto flex flex-col items-center w-full">
           <div className="flex justify-between items-end w-full max-w-3xl mb-3">
             <span className="font-label font-black text-primary text-sm uppercase tracking-widest px-4">{selectedCount} of {totalPlayers} Locked In</span>

@@ -1,4 +1,4 @@
-import { books, rounds, rooms, prompts } from "@/lib/db/schema";
+import { books, rounds, rooms, prompts, players } from "@/lib/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 
 // ── Errors ──────────────────────────────────────────────────────────────────
@@ -22,6 +22,35 @@ export class BookNotFoundError extends Error {
     super(`No book found for player ${playerId} in round ${roundId}`);
     this.name = "BookNotFoundError";
   }
+}
+
+// ── Seeded shuffle ───────────────────────────────────────────────────────────
+
+/**
+ * Full Fisher-Yates shuffle using a mulberry32 PRNG seeded from `roundId`.
+ * Every player in the same round sees the same ordering, so non-overlapping
+ * slices (by seatOrder) are guaranteed to be unique.
+ */
+function seededShuffle<T>(arr: T[], roundId: string): T[] {
+  // Hash the UUID string into a 32-bit seed
+  let seed = 0x12345678;
+  for (let i = 0; i < roundId.length; i++) {
+    seed = Math.imul(seed ^ roundId.charCodeAt(i), 0x9e3779b9);
+    seed = ((seed << 13) | (seed >>> 19)) >>> 0;
+  }
+  // mulberry32 PRNG
+  function next(): number {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(next() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 // ── Service factory ──────────────────────────────────────────────────────────
@@ -102,8 +131,12 @@ export function createPromptService(db: any) {
   }
 
   /**
-   * Return 3 randomly sampled prompts for a player to choose from,
-   * plus an `alreadySelected` flag so the UI can skip straight to the
+   * Return 3 prompts for a player to choose from, guaranteed unique across
+   * all players in the round. Uses a round-seeded shuffle so every player
+   * in the same round sees the same ordering, then slices by seatOrder so
+   * each seat gets a non-overlapping window.
+   *
+   * Also returns `alreadySelected` so the UI can skip straight to the
    * waiting screen if the player refreshes after having already chosen.
    */
   async function getPromptOptions(
@@ -118,19 +151,24 @@ export function createPromptService(db: any) {
 
     const alreadySelected = !!book && book.originalPrompt !== "";
 
-    // Fetch the full prompt pool and sample 3 via partial Fisher-Yates
+    // Look up the player's seat order so we can pick their unique slice
+    const [player] = await db
+      .select({ seatOrder: players.seatOrder })
+      .from(players)
+      .where(eq(players.id, playerId));
+
+    const seatOrder = player?.seatOrder ?? 0;
+
+    // Fetch all prompts and shuffle them deterministically for this round
     const all = await db
       .select({ id: prompts.id, text: prompts.text })
       .from(prompts);
 
-    const pool = [...all];
-    const count = Math.min(3, pool.length);
-    for (let i = 0; i < count; i++) {
-      const j = i + Math.floor(Math.random() * (pool.length - i));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
+    const shuffled = seededShuffle(all, roundId);
+    const offset = seatOrder * 3;
+    const options = shuffled.slice(offset, offset + 3);
 
-    return { options: pool.slice(0, count), alreadySelected };
+    return { options, alreadySelected };
   }
 
   return { selectPrompt, getPromptOptions };

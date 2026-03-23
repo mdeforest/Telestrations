@@ -59,6 +59,7 @@ export const rooms = pgTable(
     scoringMode: scoringModeEnum("scoring_mode").notNull().default("friendly"),
     revealBookIndex: integer("reveal_book_index").notNull().default(0),
     revealEntryIndex: integer("reveal_entry_index").notNull().default(0),
+    hostPhoneConnectedAt: timestamp("host_phone_connected_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

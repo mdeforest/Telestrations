@@ -204,25 +204,14 @@ export function LobbyPlayerList({
   if (isHost) {
     return (
       <>
+        <div className="px-4 pt-4 flex justify-center">
+          <span className="bg-primary text-on-primary text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full font-label">
+            👑 You&apos;re the Host
+          </span>
+        </div>
         <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto">
-          {/* Left: QR Code Panel */}
+          {/* Left: Tips Panel */}
           <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
-            <div className="bg-surface-container-lowest rounded-xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 flex-grow relative group cursor-pointer transition-transform hover:rotate-1 min-h-[300px]">
-              <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl group-hover:opacity-0 transition-opacity">
-                <span className="material-symbols-outlined text-6xl text-primary mb-4">qr_code_2</span>
-                <p className="font-headline text-xl text-on-surface-variant font-bold">Tap to Reveal QR</p>
-              </div>
-              <div className="w-48 h-48 bg-on-surface rounded-lg p-4 grid grid-cols-4 grid-rows-4 gap-2 opacity-10">
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-2 row-span-2"></div>
-              </div>
-              <div className="mt-8 text-center">
-                <h2 className="font-headline text-2xl font-extrabold text-primary mb-2">Scan to Join!</h2>
-                <p className="text-on-surface-variant max-w-xs mx-auto text-sm font-medium">Point your camera here to enter the sketchpad directly on your phone.</p>
-              </div>
-            </div>
             <div className="bg-tertiary-container/30 rounded-xl p-6 flex items-center gap-4">
               <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
               <div>
@@ -389,7 +378,7 @@ export function LobbyPlayerList({
           {/* Game Tip */}
           <div className="bg-tertiary-container/20 p-6 rounded-lg border-2 border-tertiary/20 flex items-start gap-4 shadow-sm">
             <span className="material-symbols-outlined text-tertiary" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
-            <p className="text-sm font-medium italic text-on-surface">Tip: Don't worry about being a good artist! The funniest rounds come from the most "creative" interpretations.</p>
+            <p className="text-sm font-medium italic text-on-surface">Tip: Don&apos;t worry about being a good artist! The funniest rounds come from the most &ldquo;creative&rdquo; interpretations.</p>
           </div>
         </div>
 

@@ -20,7 +20,7 @@ export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
         <div className="inline-block bg-primary px-8 py-4 rounded-xl sketch-shadow mb-6 transform -rotate-1">
           <h1 className="font-headline text-3xl md:text-5xl text-on-primary font-black uppercase tracking-tight flex items-center gap-3">
             <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            You're all set!
+            You&apos;re all set!
           </h1>
         </div>
         <p className="font-body text-xl text-on-surface-variant max-w-md mx-auto">
@@ -99,7 +99,7 @@ export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
               <h3 className="font-headline font-black text-xl uppercase tracking-tight">Pro Tip!</h3>
             </div>
             <p className="font-body text-on-secondary leading-relaxed mb-6 font-medium">
-              Don't worry about being a "good" artist. The most hilarious moments in Telestrations happen when a simple circle becomes a world-class disaster!
+              Don&apos;t worry about being a &ldquo;good&rdquo; artist. The most hilarious moments in Telestrations happen when a simple circle becomes a world-class disaster!
             </p>
             <div className="bg-on-secondary/10 p-4 rounded-xl border border-on-secondary/20 shadow-inner">
               <p className="font-label text-[10px] uppercase tracking-widest text-on-secondary/80 mb-1">Next Round Preview</p>
@@ -113,7 +113,7 @@ export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
           <div className="bg-surface-container-highest p-8 rounded-xl flex flex-col items-center justify-center text-center opacity-80 border-2 border-dashed border-outline-variant/30">
             <span className="material-symbols-outlined text-6xl text-outline-variant/40 mb-4 animate-pulse">gesture</span>
             <p className="font-label text-xs text-on-surface-variant font-bold uppercase tracking-widest">Did you know?</p>
-            <p className="font-body text-sm text-on-surface-variant mt-2 font-medium">The world's longest doodle is over 10km long!</p>
+            <p className="font-body text-sm text-on-surface-variant mt-2 font-medium">The world&apos;s longest doodle is over 10km long!</p>
           </div>
         </div>
       </div>

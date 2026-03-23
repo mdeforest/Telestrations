@@ -72,31 +72,25 @@ export function PromptSelectionScreen({ roundId, onSelected }: Props) {
 
 const STYLE_MAP = [
   {
-    label: "Easy",
-    icon: "auto_awesome",
+    icon: "draw",
     shadow: "sketch-shadow-primary",
     rotate: "hover:-translate-y-1 hover:rotate-1",
-    labelColor: "text-primary-dim",
     iconBgHover: "group-hover:bg-primary-container",
     iconBgDef: "bg-primary-container/20",
     iconColor: "text-primary"
   },
   {
-    label: "Medium",
-    icon: "psychology",
+    icon: "palette",
     shadow: "sketch-shadow-secondary",
     rotate: "hover:-translate-y-1 hover:-rotate-1",
-    labelColor: "text-secondary-dim",
     iconBgHover: "group-hover:bg-secondary-container",
     iconBgDef: "bg-secondary-container/20",
     iconColor: "text-secondary"
   },
   {
-    label: "Hard",
-    icon: "local_fire_department",
+    icon: "brush",
     shadow: "sketch-shadow-tertiary",
     rotate: "hover:-translate-y-1 hover:rotate-2",
-    labelColor: "text-tertiary-dim",
     iconBgHover: "group-hover:bg-tertiary-container",
     iconBgDef: "bg-tertiary-container/20",
     iconColor: "text-tertiary"
@@ -160,7 +154,6 @@ const STYLE_MAP = [
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <span className={`font-label ${config.labelColor} text-xs tracking-widest font-bold uppercase block mb-1`}>{config.label}</span>
                   <h3 className="font-headline text-2xl sm:text-3xl font-bold text-on-surface leading-tight">{opt.text}</h3>
                 </div>
                 <div className={`${config.iconBgDef} p-4 rounded-full ${config.iconBgHover} transition-colors hidden sm:block`}>
