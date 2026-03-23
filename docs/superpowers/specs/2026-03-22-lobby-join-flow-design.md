@@ -17,6 +17,16 @@ The current lobby flow is confusing in three ways:
 
 **Phone host owns all game controls.** Desktop is a read-only dashboard — it shows status and helps players join, but has no interactive controls.
 
+### UI change constraint
+
+**Keep UI changes to the absolute minimum.** This spec is about flow and behaviour, not visual redesign. Every change must be the smallest possible modification to existing components. Do not:
+- Introduce new layout patterns or restructure existing ones
+- Change colours, typography, spacing, or component styles
+- Replace existing UI elements with new ones when the existing element can be adapted
+- Add new visual flourishes or animations
+
+Acceptable UI changes are: swapping a control for its read-only text equivalent, adding a single badge/label, replacing one QR with another, and adding a blur overlay to an existing element. Everything else stays exactly as it is today.
+
 ### Flow
 
 1. Host goes to `telestrations.com` on their laptop, enters a nickname, clicks "Create Room"
