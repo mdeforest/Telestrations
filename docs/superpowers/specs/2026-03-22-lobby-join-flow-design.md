@@ -94,7 +94,7 @@ Generate and apply a Drizzle migration for this column.
 Add a one-time-use guard for the host QR:
 
 1. After loading the room, check: if `pid === room.hostPlayerId` AND `room.hostPhoneConnectedAt` is not null → return a user-friendly error response (HTTP 409) with a message such as "This host QR has already been used. Ask the host to show you the player join code instead."
-2. If this is the first connection (`hostPhoneConnectedAt` is null): update the room to set `hostPhoneConnectedAt = new Date()` before setting the cookie and redirecting.
+2. If this is the first connection (`hostPhoneConnectedAt` is null): update the room with a conditional `WHERE host_phone_connected_at IS NULL` clause so that a race between two simultaneous scans only lets one through. If the conditional update affects 0 rows, treat it as already-claimed and return the 409 error.
 3. The existing `host-phone-connected` Ably publish remains — `HostLobby.tsx` still consumes it to update `phoneConnected` state and hide the QR.
 
 ### What does NOT change
