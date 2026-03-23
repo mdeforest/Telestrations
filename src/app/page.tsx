@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [nickname, setNickname] = useState("");
-  const [joinCode, setJoinCode] = useState("");
+  const [joinCode, setJoinCode] = useState(
+    () => (searchParams.get("code") ?? "").toUpperCase()
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +24,7 @@ export default function Home() {
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Failed to create room"); setLoading(false); return; }
-    router.push(`/room/${data.code}`);
+    router.push(`/room/${data.code}/host`);
   }
 
   async function handleJoin() {
