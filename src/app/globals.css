@@ -19,6 +19,9 @@
 .sketch-shadow-secondary {
     box-shadow: 4px 4px 0px 0px var(--tw-color-secondary-dim, #00528b);
 }
+.sketch-shadow-tertiary {
+    box-shadow: 4px 4px 0px 0px var(--tw-color-tertiary-dim, #5f4e00);
+}
 .canvas-paper {
     background-image: 
         radial-gradient(var(--tw-color-surface-variant, #e2dcd1) 0.5px, transparent 0.5px),
