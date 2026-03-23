@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
-import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { HostPromptsWaiting } from "./HostPromptsWaiting";
 import { HostDrawingScreen } from "./HostDrawingScreen";
@@ -47,40 +46,17 @@ export function HostLobby({
   const [revealBookIndex, setRevealBookIndex] = useState(initialRevealBookIndex);
   const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
   const [phoneConnected, setPhoneConnected] = useState(false);
-  const [urlInfo, setUrlInfo] = useState({ connectUrl: "", isLocalhost: false });
-  const [numRounds, setNumRounds] = useState(3);
-  const [scoringMode, setScoringMode] = useState<"friendly" | "competitive">(initialScoringMode);
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const [urlInfo, setUrlInfo] = useState({ connectUrl: "", playerJoinUrl: "", isLocalhost: false });
+  const numRounds = 3;
+  const scoringMode = initialScoringMode;
 
-  const canStart = playerList.length >= 4;
-
-  async function handleStart() {
-    setStarting(true);
-    setStartError(null);
-    try {
-      const res = await debugFetch(`/api/rooms/${code}/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numRounds, scoringMode }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setStartError(data.error ?? "Failed to start game");
-        setStarting(false);
-      }
-    } catch {
-      setStartError("Network error");
-      setStarting(false);
-    }
-  }
-
-  // Compute connect URL client-side so it reflects window.location (the real IP
+  // Compute URLs client-side so they reflect window.location (the real IP
   // the browser used), not the Next.js server-side host which normalises to localhost.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrlInfo({
       connectUrl: `${window.location.origin}/room/${code}/connect?pid=${hostPlayerId}`,
+      playerJoinUrl: `${window.location.origin}/?code=${code}`,
       isLocalhost:
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1",
@@ -166,35 +142,47 @@ export function HostLobby({
     <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
       {/* Left: QR Code Panel */}
       <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
-        <div className="bg-surface-container-lowest rounded-xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 flex-grow relative group transition-transform hover:rotate-1 min-h-[300px]">
-          {urlInfo.connectUrl ? (
-             <QRCodeSVG value={urlInfo.connectUrl} size={192} className="mb-6 opacity-90 group-hover:opacity-100 transition-opacity" />
+        {/* Zone 1 — Player join QR (prominent) */}
+        <div className="bg-surface-container-lowest rounded-xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 flex-grow relative min-h-[300px]">
+          {urlInfo.playerJoinUrl ? (
+            <QRCodeSVG value={urlInfo.playerJoinUrl} size={192} className="mb-6 opacity-90" />
           ) : (
-             <div className="w-48 h-48 bg-on-surface rounded-lg p-4 grid grid-cols-4 grid-rows-4 gap-2 opacity-10 mb-6">
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-1 row-span-1"></div>
-                <div className="bg-surface col-span-2 row-span-2"></div>
-             </div>
+            <div className="w-48 h-48 bg-on-surface rounded-lg p-4 grid grid-cols-4 grid-rows-4 gap-2 opacity-10 mb-6">
+              <div className="bg-surface col-span-1 row-span-1"></div>
+              <div className="bg-surface col-span-1 row-span-1"></div>
+              <div className="bg-surface col-span-1 row-span-1"></div>
+              <div className="bg-surface col-span-2 row-span-2"></div>
+            </div>
           )}
-          <div className="mt-2 text-center">
-            <h2 className="font-headline text-2xl font-extrabold text-primary mb-2">Scan to Join!</h2>
-            <p className="text-on-surface-variant max-w-xs mx-auto text-sm font-medium">Point your camera here to enter the sketchpad directly on your phone.</p>
-            {urlInfo.isLocalhost && (
-               <p className="text-xs text-amber-600 mt-2 font-bold bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider sketch-shadow-secondary shadow-sm">Open this page via local IP</p>
-            )}
-            <p className={`text-[10px] uppercase font-bold tracking-widest mt-4 ${phoneConnected ? "text-green-600" : "text-outline-variant"}`}>
-              {phoneConnected ? "✓ Phone connected" : "Waiting for phone..."}
-            </p>
-          </div>
+          <h2 className="font-headline text-2xl font-extrabold text-primary mb-1">Scan to Join!</h2>
+          <p className="text-on-surface-variant max-w-xs mx-auto text-sm font-medium text-center">Point your camera here to join the game on your phone.</p>
         </div>
-        <div className="bg-tertiary-container/30 rounded-xl p-6 flex items-center gap-4 border border-tertiary/20">
-          <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
-          <div>
-            <p className="font-bold text-on-tertiary-container font-headline tracking-tight">Pro Tip</p>
-            <p className="text-sm text-on-tertiary-container/80 font-medium">The game is best with 6+ players for maximum chaos! Wait for everyone to join before starting.</p>
-          </div>
+
+        {/* Zone 2 — Manual fallback */}
+        <div className="bg-surface-container-lowest rounded-xl px-6 py-4 flex flex-col items-center text-center border border-outline-variant/20">
+          <p className="text-xs text-on-surface-variant font-medium mb-1">Or go to <span className="font-bold text-on-surface">telestrations.com</span> and enter</p>
+          <span className="font-headline text-3xl font-black tracking-widest text-on-surface">{code}</span>
         </div>
+
+        {/* Zone 3 — Host QR (blurred/hidden) */}
+        {!phoneConnected ? (
+          <div
+            className="rounded-xl px-6 py-4 flex flex-col items-center text-center border border-dashed border-outline-variant/20 cursor-pointer group"
+            onMouseEnter={(e) => (e.currentTarget.querySelector<HTMLDivElement>(".host-qr-inner")!.style.filter = "none")}
+            onMouseLeave={(e) => (e.currentTarget.querySelector<HTMLDivElement>(".host-qr-inner")!.style.filter = "blur(8px)")}
+          >
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">👑 Host — hover to reveal your controller QR</p>
+            <div className="host-qr-inner transition-all" style={{ filter: "blur(8px)" }}>
+              {urlInfo.connectUrl ? (
+                <QRCodeSVG value={urlInfo.connectUrl} size={96} />
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl px-6 py-4 flex flex-col items-center text-center border border-outline-variant/20">
+            <p className="text-xs font-bold text-green-600 uppercase tracking-widest">✓ Host phone connected</p>
+          </div>
+        )}
       </section>
 
       {/* Right: Players Grid */}
@@ -209,12 +197,12 @@ export function HostLobby({
           {playerList.map((p, index) => {
             const isHostPlayer = p.id === hostPlayerId;
             const initials = p.nickname.slice(0, 2).toUpperCase();
-            
+
             // Varied tilt/rotation for players to match living doodle
             const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
             const bgRound = index % 3 === 0 ? "bg-secondary text-on-secondary sketch-shadow-secondary border border-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container border border-primary sketch-shadow-primary" : "bg-tertiary-container text-on-tertiary-container border border-tertiary sketch-shadow";
             const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
-            
+
             return (
               <div key={p.id} className={`${cardBg} p-6 col-span-1 rounded-xl flex flex-col items-center gap-3 ${rotation} relative shadow-sm border border-outline-variant/10 transition-transform hover:scale-105 min-h-[160px] justify-center`}>
                 <div className="relative">
@@ -241,7 +229,7 @@ export function HostLobby({
         </div>
       </section>
 
-      {/* Footer Settings & Actions */}
+      {/* Footer Settings (read-only) */}
       <footer className="bg-surface-container-lowest/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 rounded-t-[3rem] border-t-2 border-outline-variant/30 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center px-8 lg:px-16 py-6 lg:py-8 gap-6 md:gap-0">
           <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center">
@@ -250,60 +238,26 @@ export function HostLobby({
               <div className="flex gap-6 items-center">
                 <div className="flex flex-col items-center md:items-start">
                   <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Rounds</span>
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setNumRounds(Math.max(3, numRounds - 1))} className="text-secondary hover:text-primary active:scale-90 transition-all cursor-pointer">
-                       <span className="material-symbols-outlined">remove_circle</span>
-                    </button>
-                    <span className="font-headline text-2xl font-extrabold text-on-surface w-4 text-center">{numRounds}</span>
-                    <button onClick={() => setNumRounds(Math.min(8, numRounds + 1))} className="text-secondary hover:text-primary active:scale-90 transition-all cursor-pointer">
-                       <span className="material-symbols-outlined">add_circle</span>
-                    </button>
-                  </div>
+                  <span className="font-headline text-2xl font-extrabold text-on-surface">{numRounds}</span>
                 </div>
                 <div className="h-10 w-px bg-outline-variant/30"></div>
-                <div className="flex flex-col items-center md:items-start group cursor-pointer" onClick={() => setScoringMode(scoringMode === "friendly" ? "competitive" : "friendly")}>
+                <div className="flex flex-col items-center md:items-start">
                   <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scoring Mode</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-headline text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
-                    <span className="material-symbols-outlined text-secondary text-sm group-hover:rotate-180 transition-transform">swap_vert</span>
-                  </div>
+                  <span className="font-headline text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
                 </div>
               </div>
-            </div>
-            <div className="hidden xl:block h-12 w-px bg-outline-variant/30"></div>
-            <div className="hidden xl:block text-outline font-label uppercase tracking-widest text-sm font-bold">
-              {playerList.length} of 8 players ready
+              <span className="text-[10px] text-outline-variant mt-2 font-label">Set on host phone</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4 lg:gap-8 w-full md:w-auto justify-between md:justify-end">
             <div className="flex flex-col items-center bg-secondary-container/30 px-6 py-2 rounded-xl border border-secondary/10">
               <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-0.5">Room Code</span>
               <span className="font-headline text-2xl font-black tracking-widest text-on-secondary-container">{code}</span>
             </div>
-            <div className="flex items-center relative">
-              <button
-                onClick={handleStart}
-                disabled={!canStart || starting}
-                className={`rounded-full px-8 lg:px-12 py-4 lg:py-5 font-headline font-bold text-lg lg:text-xl flex items-center gap-3 transition-all ${
-                  canStart && !starting
-                    ? "bg-primary text-on-primary hover:-translate-y-1 hover:shadow-lg active:scale-95 active:shadow-md sketch-shadow-primary uppercase tracking-widest"
-                    : "bg-surface-container-highest text-outline-variant cursor-not-allowed opacity-80 uppercase tracking-widest"
-                }`}
-              >
-                <span>{starting ? "Starting..." : "Start Game"}</span>
-                <span className="material-symbols-outlined font-bold">{starting ? "hourglass_empty" : "play_arrow"}</span>
-              </button>
-              {startError && <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-error text-on-error font-label text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg animate-bounce sketch-shadow shadow-md z-50">{startError}</div>}
-            </div>
           </div>
         </div>
       </footer>
-      {!canStart && (
-        <div className="fixed bottom-36 md:bottom-32 right-8 md:right-16 bg-error-container text-on-error-container px-4 py-2 rounded-xl font-label text-xs uppercase font-bold animate-bounce shadow-lg z-50 sketch-shadow border-2 border-error">
-          Min. 4 Players Required
-        </div>
-      )}
     </main>
   );
 }
