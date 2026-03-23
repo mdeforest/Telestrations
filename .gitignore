@@ -37,3 +37,4 @@ cookies*.txt
 .claude/
 # Visual companion brainstorm sessions
 .superpowers/
+.worktrees/
