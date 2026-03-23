@@ -42,18 +42,8 @@ export function HostPromptsWaiting({
       }
     });
 
-    // Room going active triggers a page reload (server re-renders game view)
-    const statusCh = ably.channels.get(channels.roomStatus(code));
-    statusCh.subscribe("room-status-changed", (msg) => {
-      const { status } = msg.data as { status: string };
-      if (status === "active") {
-        window.location.reload();
-      }
-    });
-
     return () => {
       promptsCh.unsubscribe();
-      statusCh.unsubscribe();
     };
   }, [code]);
 

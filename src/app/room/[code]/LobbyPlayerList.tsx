@@ -57,6 +57,7 @@ export function LobbyPlayerList({
   const [incomingDrawing, setIncomingDrawing] = useState<string | null>(null);
   const [revealBookIndex, setRevealBookIndex] = useState(initialRevealBookIndex);
   const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
+  const [passVersion, setPassVersion] = useState(0);
 
   const canStart = playerList.length >= 4;
 
@@ -119,10 +120,18 @@ export function LobbyPlayerList({
       setRevealEntryIndex(eIdx);
     });
 
+    const passCh = ably.channels.get(channels.roundPass(code));
+    passCh.subscribe("pass-advanced", () => {
+      setPassType(null);
+      setIncomingDrawing(null);
+      setPassVersion((v) => v + 1);
+    });
+
     return () => {
       playersCh.unsubscribe();
       statusCh.unsubscribe();
       revealCh.unsubscribe();
+      passCh.unsubscribe();
     };
   }, [code]);
 
@@ -138,7 +147,7 @@ export function LobbyPlayerList({
         setIncomingDrawing(data.incomingContent ?? null);
       })
       .catch(() => {/* non-fatal — defaults to drawing */});
-  }, [status, roundId]);
+  }, [status, roundId, passVersion]);
 
   async function handleStart() {
     setStarting(true);
@@ -181,6 +190,7 @@ export function LobbyPlayerList({
     if (passType === "guess") {
       return (
         <GuessingPhaseScreen
+          key={passVersion}
           code={code}
           roundId={roundId}
           playerId={playerId}
@@ -192,6 +202,7 @@ export function LobbyPlayerList({
     }
     return (
       <DrawingPhaseScreen
+        key={passVersion}
         code={code}
         roundId={roundId}
         playerId={playerId}

@@ -69,17 +69,6 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
       .catch(() => {/* non-fatal — submit button stays disabled */});
   }, [roundId]);
 
-  // Subscribe to pass-advanced so we know when the round moves on
-  useEffect(() => {
-    const ably = getAblyClient();
-    const ch = ably.channels.get(channels.roundPass(code));
-    ch.subscribe("pass-advanced", () => {
-      // Reload to pick up the new pass state from the server
-      window.location.reload();
-    });
-    return () => ch.unsubscribe();
-  }, [code]);
-
   // Enter Ably presence so the host screen can detect disconnects
   useEffect(() => {
     const ably = getAblyClient();

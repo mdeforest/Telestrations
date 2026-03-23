@@ -83,16 +83,6 @@ export function GuessingPhaseScreen({
       .catch(() => {/* non-fatal */});
   }, [roundId]);
 
-  // Subscribe to pass-advanced / room-status-changed to reload when round moves
-  useEffect(() => {
-    const ably = getAblyClient();
-    const ch = ably.channels.get(channels.roundPass(code));
-    ch.subscribe("pass-advanced", () => {
-      window.location.reload();
-    });
-    return () => ch.unsubscribe();
-  }, [code]);
-
   // Enter Ably presence
   useEffect(() => {
     const ably = getAblyClient();
