@@ -45,13 +45,19 @@ The existing QR (`connectUrl`) links to `/room/${code}/connect?pid=${hostPlayerI
 
 The following are no longer needed and must be deleted:
 
-- `phoneConnected` state and setter
 - `showQr` state and setter (currently unused but present)
 - `starting` state and setter
 - `startError` state and setter
 - `canStart` constant
 - `handleStart` function
-- The Ably subscription to `host-phone-connected` (lines subscribing `playersCh` for `"host-phone-connected"`)
+
+The following must be **kept**:
+
+- `phoneConnected` state and the Ably subscription to `host-phone-connected` — used to confirm the host phone has connected and hide the host QR (see left panel section below).
+
+#### `src/app/room/[code]/host/HostLobby.tsx` — host QR post-connection behaviour
+
+Once `phoneConnected` becomes `true` (via the Ably event), the host QR zone should transition from the blurred QR to a confirmation state: hide the QR entirely and show "✓ Host phone connected" text. This prevents the host from accidentally sharing the QR after it has been claimed.
 
 #### `src/app/room/[code]/host/HostLobby.tsx` — footer
 
@@ -73,27 +79,42 @@ Changes:
 - Add a "👑 You're the Host" badge at the top of the `isHost` branch (before the player grid / settings)
 - All other elements (settings controls, start button, player grid, footer) stay exactly as-is
 
+#### `src/lib/db/schema.ts` + migration
+
+Add a nullable `hostPhoneConnectedAt` timestamp column to the `rooms` table:
+
+```ts
+hostPhoneConnectedAt: timestamp("host_phone_connected_at", { withTimezone: true }),
+```
+
+Generate and apply a Drizzle migration for this column.
+
 #### `src/app/room/[code]/connect/route.ts`
 
-No changes. The route still publishes `host-phone-connected` to Ably on scan — this publish becomes vestigial (nothing consumes it after `HostLobby.tsx` removes the listener), but it is harmless and can be cleaned up in a future pass.
+Add a one-time-use guard for the host QR:
+
+1. After loading the room, check: if `pid === room.hostPlayerId` AND `room.hostPhoneConnectedAt` is not null → return a user-friendly error response (HTTP 409) with a message such as "This host QR has already been used. Ask the host to show you the player join code instead."
+2. If this is the first connection (`hostPhoneConnectedAt` is null): update the room to set `hostPhoneConnectedAt = new Date()` before setting the cookie and redirecting.
+3. The existing `host-phone-connected` Ably publish remains — `HostLobby.tsx` still consumes it to update `phoneConnected` state and hide the QR.
 
 ### What does NOT change
 
 - All game phases (prompts, drawing, guessing, reveal) — untouched
 - Regular player view (`isHost=false` branch of `LobbyPlayerList`) — untouched
 - Desktop host views for active game phases (`HostDrawingScreen`, `HostPromptsWaiting`, `HostRevealScreen`) — untouched
-- No new routes or API endpoints
+- No new routes (one new DB column and migration)
 
 ### Edge cases
 
 - **Host opens `/room/[code]` directly** (e.g. from a bookmark after creating a room) — they land on the phone host view (`isHost=true`), which still has full controls. This is fine.
 - **Host hasn't connected their phone yet** — the desktop shows "Waiting for host to start..." status in the player area. There is no server-side enforcement that the host must connect their phone before starting; the Start button on the phone host view works regardless of whether the host scanned the host QR. This is acceptable.
 - **`?code=` param on home page with invalid code** — existing join error handling in `handleJoin` covers it; no new error handling needed.
-- **Player accidentally scans the host QR** — they land on `/room/[code]/connect?pid=${hostPlayerId}`, which sets their `playerId` cookie to the host's player ID. This is the same risk as today and is acceptable — it requires physically scanning the blurred QR on a laptop screen.
+- **Player accidentally scans the host QR after it's been claimed** — the `connect` route returns a 409 with a friendly error message. Their cookie is not modified.
+- **Player scans the host QR before the host has connected** — they claim the host phone slot. Mitigated by the blurred hover-to-reveal UI making the QR hard to accidentally scan. If this happens, the host can no longer connect their phone via QR (same risk as today, now with one-time-use enforcement).
 
 ## Out of scope
 
 - Settings sync between desktop and phone (desktop is read-only — no sync needed; stale display is acceptable)
 - Responsive/mobile detection to auto-select desktop vs phone host view
 - Kick players, extend timer, or other in-game host controls beyond the lobby
-- Cleaning up the vestigial `host-phone-connected` publish in `connect/route.ts`
+- Resetting `hostPhoneConnectedAt` if the host wants to re-claim their phone (not needed for current use cases)
