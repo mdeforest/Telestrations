@@ -192,20 +192,28 @@ describe("selectPrompt", () => {
 /**
  * Builds a select mock for getPromptOptions.
  * Call sequence inside the service:
- *   1. select().from(books).where(...)  → player's book (check alreadySelected)
- *   2. select().from(prompts)           → full prompts pool (no .where)
+ *   1. select().from(books).where(...)   → player's book (check alreadySelected)
+ *   2. select().from(players).where(...) → player's seatOrder
+ *   3. select().from(prompts)            → full prompts pool (no .where)
  */
 function makeGetPromptOptionsMock(
   bookResult: unknown[],
-  promptPool: unknown[]
+  promptPool: unknown[],
+  seatOrder = 0
 ) {
   let fromCallCount = 0;
   return vi.fn().mockReturnValue({
     from: vi.fn().mockImplementation(() => {
       const call = fromCallCount++;
       if (call === 0) {
+        // books query
         return { where: vi.fn().mockResolvedValue(bookResult) };
       }
+      if (call === 1) {
+        // players query for seatOrder
+        return { where: vi.fn().mockResolvedValue([{ seatOrder }]) };
+      }
+      // prompts pool (no .where)
       return Promise.resolve(promptPool);
     }),
   });

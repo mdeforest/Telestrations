@@ -47,22 +47,17 @@ export default async function HostLobbyPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <p className="text-sm text-gray-500 uppercase tracking-widest mb-1">Room Code</p>
-      <h1 className="text-8xl font-black tracking-widest mb-10">{upperCode}</h1>
-
-      <HostLobby
-        code={upperCode}
-        initialPlayers={playerList}
-        hostPlayerId={room.hostPlayerId ?? ""}
-        initialStatus={room.status}
-        initialSelectedCount={initialSelectedCount}
-        initialRoundId={initialRoundId}
-        initialTimerStartedAt={initialTimerStartedAt}
-        initialRevealBookIndex={room.revealBookIndex}
-        initialRevealEntryIndex={room.revealEntryIndex}
-        initialScoringMode={room.scoringMode}
-      />
-    </main>
+    <HostLobby
+      code={upperCode}
+      initialPlayers={playerList}
+      hostPlayerId={room.hostPlayerId ?? ""}
+      initialStatus={room.status}
+      initialSelectedCount={initialSelectedCount}
+      initialRoundId={initialRoundId}
+      initialTimerStartedAt={initialTimerStartedAt}
+      initialRevealBookIndex={room.revealBookIndex}
+      initialRevealEntryIndex={room.revealEntryIndex}
+      initialScoringMode={room.scoringMode}
+    />
   );
 }
