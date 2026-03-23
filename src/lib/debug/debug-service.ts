@@ -6,6 +6,8 @@ import { createRevealService } from "@/lib/game/reveal-service";
 import { createEntryService } from "@/lib/game/entry-service";
 import { createPromptService } from "@/lib/game/prompt-service";
 import { entryType } from "@/lib/game/chain-router";
+import { getAblyRest } from "@/lib/realtime/server";
+import { channels } from "@/lib/realtime/channels";
 
 // ── Error types ──────────────────────────────────────────────────────────────
 
@@ -83,11 +85,13 @@ const sessions: Map<string, DebugSession> =
 type AnyDb = any;
 
 type RoomServiceLike = { startGame: (...args: unknown[]) => Promise<unknown> };
-type RevealServiceLike = { advanceReveal: (...args: unknown[]) => Promise<unknown> };
-type EntryServiceLike = { submitEntry: (...args: unknown[]) => Promise<unknown> };
+type RevealResult = { revealBookIndex: number; revealEntryIndex: number; finished: boolean; nextRound: boolean; nextRoundId: string | null };
+type RevealServiceLike = { advanceReveal: (...args: unknown[]) => Promise<RevealResult> };
+type EntryResult = { allSubmitted: boolean; roundComplete: boolean };
+type EntryServiceLike = { submitEntry: (...args: unknown[]) => Promise<EntryResult> };
 type PromptServiceLike = {
   getPromptOptions: (...args: unknown[]) => Promise<{ options: Array<{ id: string; text: string }>; alreadySelected: boolean }>;
-  selectPrompt: (...args: unknown[]) => Promise<unknown>;
+  selectPrompt: (...args: unknown[]) => Promise<{ allSelected: boolean }>;
 };
 
 interface ServiceOverrides {
@@ -238,11 +242,28 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
           numRounds: 3,
           scoringMode: "friendly",
         });
+        const [firstRound] = await db
+          .select({ id: rounds.id })
+          .from(rounds)
+          .where(and(eq(rounds.roomId, session.roomId), eq(rounds.roundNumber, 1)));
+        if (firstRound) {
+          await getAblyRest()
+            .channels.get(channels.roomStatus(session.roomCode))
+            .publish("room-status-changed", { status: "prompts", roundId: firstRound.id });
+        }
         break;
       }
 
       case "advance_reveal": {
-        await revealSvc.advanceReveal(session.roomCode, host.playerId);
+        const result = await revealSvc.advanceReveal(session.roomCode, host.playerId);
+        await getAblyRest()
+          .channels.get(channels.revealAdvance(session.roomCode))
+          .publish("reveal:advance", result);
+        if (result.nextRound && result.nextRoundId) {
+          await getAblyRest()
+            .channels.get(channels.roomStatus(session.roomCode))
+            .publish("room-status-changed", { status: "prompts", roundId: result.nextRoundId });
+        }
         break;
       }
 
@@ -261,6 +282,7 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
             )
           );
 
+        let allSelected = false;
         for (const player of session.players) {
           const { options, alreadySelected } = await promptSvc.getPromptOptions(
             round.id,
@@ -279,7 +301,22 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
               .returning();
             promptId = sentinel.id;
           }
-          await promptSvc.selectPrompt(round.id, player.playerId, promptId);
+          const selectResult = await promptSvc.selectPrompt(round.id, player.playerId, promptId);
+          if (selectResult.allSelected) allSelected = true;
+        }
+
+        if (allSelected) {
+          const [updatedRound] = await db
+            .select({ timerStartedAt: rounds.timerStartedAt })
+            .from(rounds)
+            .where(eq(rounds.id, round.id));
+          await getAblyRest()
+            .channels.get(channels.roomStatus(session.roomCode))
+            .publish("room-status-changed", {
+              status: "active",
+              roundId: round.id,
+              timerStartedAt: updatedRound?.timerStartedAt?.toISOString() ?? null,
+            });
         }
         break;
       }
@@ -306,8 +343,21 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
             )
           );
 
+        let lastResult: EntryResult | null = null;
         for (const entry of entryRows) {
-          await entrySvc.submitEntry(entry.bookId, entry.passNumber, entry.authorPlayerId, "[]");
+          lastResult = await entrySvc.submitEntry(entry.bookId, entry.passNumber, entry.authorPlayerId, "[]");
+        }
+        if (lastResult?.allSubmitted) {
+          if (lastResult.roundComplete) {
+            await db.update(rooms).set({ status: "reveal" }).where(eq(rooms.id, session.roomId));
+            await getAblyRest()
+              .channels.get(channels.roomStatus(session.roomCode))
+              .publish("room-status-changed", { status: "reveal" });
+          } else {
+            await getAblyRest()
+              .channels.get(channels.roundPass(session.roomCode))
+              .publish("pass-advanced", {});
+          }
         }
         break;
       }
@@ -334,13 +384,26 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
             )
           );
 
+        let lastResult: EntryResult | null = null;
         for (const entry of entryRows) {
-          await entrySvc.submitEntry(
+          lastResult = await entrySvc.submitEntry(
             entry.bookId,
             entry.passNumber,
             entry.authorPlayerId,
             "debug guess"
           );
+        }
+        if (lastResult?.allSubmitted) {
+          if (lastResult.roundComplete) {
+            await db.update(rooms).set({ status: "reveal" }).where(eq(rooms.id, session.roomId));
+            await getAblyRest()
+              .channels.get(channels.roomStatus(session.roomCode))
+              .publish("room-status-changed", { status: "reveal" });
+          } else {
+            await getAblyRest()
+              .channels.get(channels.roundPass(session.roomCode))
+              .publish("pass-advanced", {});
+          }
         }
         break;
       }
