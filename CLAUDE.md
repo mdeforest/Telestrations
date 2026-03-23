@@ -49,3 +49,4 @@ See `docs/decisions.md` for the full decision log. Key points:
 - Never commit to `main`
 - Commit format: `type(scope): short description`
 - Fix TypeScript/lint errors immediately, including pre-existing ones
+- Git worktrees go in `.worktrees/` (project-local, hidden)
