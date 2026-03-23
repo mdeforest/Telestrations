@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Ably from "ably";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 
@@ -63,14 +64,16 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
 
     // Refresh pending list when a pass advances
     const passCh = ably.channels.get(channels.roundPass(code));
-    passCh.subscribe("pass-advanced", () => { fetchStatus(); });
+    const onPassAdvanced = () => { fetchStatus(); };
+    passCh.subscribe("pass-advanced", onPassAdvanced);
 
     // Update disconnected list when a player's connection status changes
     const playersCh = ably.channels.get(channels.roomPlayers(code));
-    playersCh.subscribe("player-connection-changed", () => { fetchStatus(); });
+    const onConnectionChanged = () => { fetchStatus(); };
+    playersCh.subscribe("player-connection-changed", onConnectionChanged);
 
     // Subscribe to Ably presence leave/enter events and persist to DB
-    playersCh.presence.subscribe((member) => {
+    const onPresenceChange = (member: Ably.PresenceMessage) => {
       const data = member.data as { playerId?: string } | undefined;
       const pid = data?.playerId;
       if (!pid) return;
@@ -80,13 +83,14 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isConnected }),
       }).catch(() => {/* non-fatal */});
-    });
+    };
+    playersCh.presence.subscribe(onPresenceChange);
 
     return () => {
       cancelled = true;
-      passCh.unsubscribe();
-      playersCh.unsubscribe();
-      playersCh.presence.unsubscribe();
+      passCh.unsubscribe("pass-advanced", onPassAdvanced);
+      playersCh.unsubscribe("player-connection-changed", onConnectionChanged);
+      playersCh.presence.unsubscribe(onPresenceChange);
     };
   }, [roundId, code]);
 

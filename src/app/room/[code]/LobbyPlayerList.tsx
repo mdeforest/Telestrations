@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Ably from "ably";
 import { getAblyClient, resetAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 import { debugFetch } from "@/lib/debug/debug-fetch";
@@ -82,17 +83,18 @@ export function LobbyPlayerList({
     const ably = getAblyClient();
 
     const playersCh = ably.channels.get(channels.roomPlayers(code));
-    playersCh.subscribe("players-updated", (msg) => {
+    const onPlayersUpdated = (msg: Ably.Message) => {
       const { players, hostPlayerId: newHostId } = msg.data as {
         players: Player[];
         hostPlayerId: string;
       };
       setPlayerList(players);
       setCurrentHostId(newHostId);
-    });
+    };
+    playersCh.subscribe("players-updated", onPlayersUpdated);
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
-    statusCh.subscribe("room-status-changed", (msg) => {
+    const onStatusChanged = (msg: Ably.Message) => {
       const { status: newStatus, roundId: newRoundId, timerStartedAt: newTimer } = msg.data as {
         status: string;
         roundId?: string;
@@ -107,10 +109,11 @@ export function LobbyPlayerList({
         setPassType(null);
         setIncomingDrawing(null);
       }
-    });
+    };
+    statusCh.subscribe("room-status-changed", onStatusChanged);
 
     const revealCh = ably.channels.get(channels.revealAdvance(code));
-    revealCh.subscribe("reveal:advance", (msg) => {
+    const onRevealAdvance = (msg: Ably.Message) => {
       const { revealBookIndex: bIdx, revealEntryIndex: eIdx } = msg.data as {
         revealBookIndex: number;
         revealEntryIndex: number;
@@ -118,20 +121,22 @@ export function LobbyPlayerList({
       };
       setRevealBookIndex(bIdx);
       setRevealEntryIndex(eIdx);
-    });
+    };
+    revealCh.subscribe("reveal:advance", onRevealAdvance);
 
     const passCh = ably.channels.get(channels.roundPass(code));
-    passCh.subscribe("pass-advanced", () => {
+    const onPassAdvanced = () => {
       setPassType(null);
       setIncomingDrawing(null);
       setPassVersion((v) => v + 1);
-    });
+    };
+    passCh.subscribe("pass-advanced", onPassAdvanced);
 
     return () => {
-      playersCh.unsubscribe();
-      statusCh.unsubscribe();
-      revealCh.unsubscribe();
-      passCh.unsubscribe();
+      playersCh.unsubscribe("players-updated", onPlayersUpdated);
+      statusCh.unsubscribe("room-status-changed", onStatusChanged);
+      revealCh.unsubscribe("reveal:advance", onRevealAdvance);
+      passCh.unsubscribe("pass-advanced", onPassAdvanced);
     };
   }, [code]);
 
