@@ -63,14 +63,30 @@ export default function Home() {
                 <span className="material-symbols-outlined text-lg" data-icon="face">face</span>
                 NICKNAME
               </label>
-              <input 
-                className="w-full bg-surface-container-low border-0 rounded-DEFAULT p-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all focus:rotate-1" 
-                id="nickname" 
-                placeholder="Sketchy Artist..." 
-                type="text" 
+              <input
+                className="w-full bg-surface-container-low border-0 rounded-DEFAULT p-4 text-on-surface placeholder:text-outline-variant focus:ring-2 focus:ring-primary/20 transition-all focus:rotate-1"
+                id="nickname"
+                placeholder="Sketchy Artist..."
+                type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
               />
+            </div>
+
+            <button
+              className="w-full bg-surface-container-low text-secondary font-headline font-bold text-lg py-4 rounded-xl border-2 border-dashed border-secondary/20 hover:bg-secondary/5 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              type="button"
+              onClick={handleCreate}
+              disabled={!nickname.trim() || loading}
+            >
+              <span className="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+              Create Room
+            </button>
+
+            <div className="flex items-center gap-4">
+              <div className="flex-1 border-t border-outline-variant/30"></div>
+              <span className="font-label text-xs text-outline font-bold uppercase tracking-widest">or join</span>
+              <div className="flex-1 border-t border-outline-variant/30"></div>
             </div>
 
             <div className="space-y-2">
@@ -97,25 +113,15 @@ export default function Home() {
 
             {error && <p className="text-sm font-body text-error font-medium bg-error-container/20 px-4 py-3 rounded-xl">{error}</p>}
 
-            <div className="pt-4 flex flex-col gap-4">
-              <button 
-                className="group relative w-full bg-primary text-on-primary font-headline font-bold text-xl py-5 rounded-xl sketch-shadow-primary active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:sketch-shadow-primary disabled:active:scale-100" 
+            <div className="pt-4">
+              <button
+                className="group relative w-full bg-primary text-on-primary font-headline font-bold text-xl py-5 rounded-xl sketch-shadow-primary active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:sketch-shadow-primary disabled:active:scale-100"
                 type="button"
                 onClick={handleJoin}
                 disabled={!nickname.trim() || !joinCode.trim() || loading}
               >
                 Join Game
                 <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
-              </button>
-
-              <button 
-                className="w-full bg-surface-container-low text-secondary font-headline font-bold text-lg py-4 rounded-xl border-2 border-dashed border-secondary/20 hover:bg-secondary/5 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed" 
-                type="button"
-                onClick={handleCreate}
-                disabled={!nickname.trim() || loading}
-              >
-                <span className="material-symbols-outlined" data-icon="add_circle">add_circle</span>
-                Create Room
               </button>
             </div>
           </form>

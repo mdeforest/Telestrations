@@ -243,7 +243,7 @@ export function HostLobby({
       </section>
 
       {/* Footer Settings & Actions */}
-      <footer className="bg-[#ffffff]/95 dark:bg-stone-950/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 rounded-t-[3rem] border-t-2 border-[#e2dcd1] dark:border-stone-800 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
+      <footer className="bg-surface-container-lowest/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 rounded-t-[3rem] border-t-2 border-outline-variant/30 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center px-8 lg:px-16 py-6 lg:py-8 gap-6 md:gap-0">
           <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center">
             <div className="flex flex-col items-center md:items-start">
