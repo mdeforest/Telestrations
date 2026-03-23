@@ -28,6 +28,7 @@ function renderGuessing(overrides: Partial<Parameters<typeof GuessingPhaseScreen
     playerId: "player-1",
     timerStartedAt: null,
     incomingDrawing: STROKES,
+    players: [],
   };
   return render(<GuessingPhaseScreen {...defaults} {...overrides} />);
 }

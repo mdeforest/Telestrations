@@ -25,16 +25,19 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
   ): Point {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     if ("touches" in e) {
       const touch = e.touches[0];
       return {
-        x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top,
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
       };
     }
     return {
-      x: (e as React.MouseEvent).clientX - rect.left,
-      y: (e as React.MouseEvent).clientY - rect.top,
+      x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as React.MouseEvent).clientY - rect.top) * scaleY,
     };
   }
 
@@ -102,47 +105,79 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
     }
   }, [replayStrokes]);
 
+  // Helper to adjust brush size to standard steps on slider
+  const handleBrushChange = (size: number) => {
+    setBrushSize(size);
+    // Focus logic would go here if needed
+  };
+
   return (
-    <div className="flex flex-col gap-6 bg-surface-container p-4 sm:p-6 rounded-[2.5rem] shadow-ambient max-w-md w-full mx-auto transform rotate-1">
-      <div className="bg-surface-container-high p-2 rounded-3xl">
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={400}
-          className="bg-surface-container-lowest touch-none rounded-2xl w-full h-auto object-contain cursor-crosshair shadow-sm"
-          onMouseDown={readOnly ? undefined : startDrawing}
-          onMouseMove={readOnly ? undefined : continueDrawing}
-          onMouseUp={readOnly ? undefined : endDrawing}
-          onMouseLeave={readOnly ? undefined : endDrawing}
-          onTouchStart={readOnly ? undefined : startDrawing}
-          onTouchMove={readOnly ? undefined : continueDrawing}
-          onTouchEnd={readOnly ? undefined : endDrawing}
-        />
-      </div>
-      {!readOnly && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4 font-label text-sm text-on-surface-variant bg-surface-container-low px-4 py-3 rounded-2xl transform -rotate-1">
-            <label htmlFor="brush-size" className="uppercase tracking-wider font-bold">Brush</label>
-            <input
-              id="brush-size"
-              type="range"
-              min={1}
-              max={20}
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="flex-1 accent-secondary"
+    <>
+      <div className="flex-grow flex flex-col items-center justify-center w-full px-2 py-4">
+        {/* The Drawing Paper Stack */}
+        <div className="relative w-full max-w-2xl aspect-[4/3] min-h-[40vh]">
+          <div className="absolute inset-0 bg-surface-container-highest -rotate-1 scale-[1.02] sm:scale-105 rounded-xl pointer-events-none opacity-40"></div>
+          <div className="absolute inset-0 bg-surface-container-high rotate-1 scale-[1.01] sm:scale-[1.02] rounded-xl pointer-events-none opacity-60"></div>
+          {/* Active Drawing Canvas */}
+          <div className="absolute inset-0 bg-surface-container-lowest rounded-xl shadow-xl canvas-paper overflow-hidden border-4 border-surface-container-highest">
+            <canvas
+              ref={canvasRef}
+              width={800}
+              height={600}
+              className="w-full h-full touch-none object-contain cursor-crosshair bg-transparent"
+              onMouseDown={readOnly ? undefined : startDrawing}
+              onMouseMove={readOnly ? undefined : continueDrawing}
+              onMouseUp={readOnly ? undefined : endDrawing}
+              onMouseLeave={readOnly ? undefined : endDrawing}
+              onTouchStart={readOnly ? undefined : startDrawing}
+              onTouchMove={readOnly ? undefined : continueDrawing}
+              onTouchEnd={readOnly ? undefined : endDrawing}
             />
-            <span className="w-8 text-right font-mono font-bold">{brushSize}px</span>
           </div>
+        </div>
+      </div>
+
+      {!readOnly && (
+        <footer className="w-full px-6 pb-8 pt-2 flex flex-col md:flex-row items-center justify-between gap-6 z-40 max-w-4xl mx-auto">
+          {/* Drawing Tools: Glassmorphism Floating Palette */}
+          <div className="flex flex-wrap items-center justify-center gap-4 bg-surface/80 backdrop-blur-md px-6 py-4 rounded-xl border-2 border-surface-container-highest shadow-lg w-full md:w-auto">
+            {/* Swatches (Placeholder logic for design mapping) */}
+            <div className="flex items-center gap-2 border-r border-surface-container-highest pr-4">
+              <button disabled className="w-8 h-8 rounded-full bg-on-surface ring-4 ring-surface-container shadow-inner transition-transform active:scale-90"></button>
+              <button disabled className="w-8 h-8 rounded-full bg-primary transition-transform active:scale-90 hover:scale-110 opacity-50"></button>
+              <button disabled className="w-8 h-8 rounded-full bg-secondary transition-transform active:scale-90 hover:scale-110 opacity-50"></button>
+              <button disabled className="w-8 h-8 rounded-full bg-tertiary transition-transform active:scale-90 hover:scale-110 opacity-50"></button>
+              <button disabled className="w-8 h-8 rounded-full bg-error transition-transform active:scale-90 hover:scale-110 opacity-50"></button>
+            </div>
+            {/* Brush Sizes */}
+            <div className="flex items-center gap-4">
+              <button onClick={() => handleBrushChange(2)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize <= 2 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+                <div className="w-2 h-2 bg-current rounded-full"></div>
+              </button>
+              <button onClick={() => handleBrushChange(5)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 2 && brushSize <= 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+                <div className="w-4 h-4 bg-current rounded-full"></div>
+              </button>
+              <button onClick={() => handleBrushChange(10)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+                <div className="w-6 h-6 bg-current rounded-full"></div>
+              </button>
+            </div>
+          </div>
+
+          {/* Submit Button: The Squeezable Button */}
           <button
             onClick={handleSubmit}
             disabled={disabled}
-            className="w-full py-4 rounded-xl text-xl font-black font-display bg-primary text-on-primary shadow-sketch shadow-primary-dim active:shadow-none active:translate-y-[2px] active:translate-x-[2px] active:scale-[0.98] disabled:opacity-50 disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:shadow-sketch disabled:active:scale-100 transition-all transform rotate-1"
+            className="group relative w-full md:w-auto bg-primary text-on-primary font-headline font-bold text-lg px-12 py-4 rounded-xl sketch-shadow transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50 disabled:grayscale"
           >
-            {disabled ? "Submitting…" : "Submit Drawing"}
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {disabled ? "Submitting…" : "Submit Drawing"}
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+            </span>
+            {/* Gel Pen Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-primary to-primary-container opacity-20 rounded-xl"></div>
           </button>
-        </div>
+        </footer>
       )}
-    </div>
+    </>
   );
 }

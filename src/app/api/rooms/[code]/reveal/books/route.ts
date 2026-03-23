@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPlayerId } from "@/lib/debug/get-player-id";
 import { db } from "@/lib/db";
 import { rooms, players, books, rounds, entries } from "@/lib/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
@@ -9,12 +8,6 @@ export async function GET(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-
-  const playerId = await getPlayerId();
-
-  if (!playerId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  }
 
   const [room] = await db
     .select()

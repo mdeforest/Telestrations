@@ -141,7 +141,17 @@ export function DebugDashboard() {
           {/* Room status bar */}
           <div className="mb-6 p-4 bg-white rounded-lg border">
             <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Room</p>
-            <p className="text-3xl font-black tracking-widest mb-2">{session.roomCode}</p>
+            <div className="flex items-center gap-4 mb-2">
+              <p className="text-3xl font-black tracking-widest">{session.roomCode}</p>
+              <a
+                href={`/room/${session.roomCode}/host`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs px-3 py-1.5 rounded border border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors font-medium"
+              >
+                📺 Open Host View
+              </a>
+            </div>
             <div className="flex gap-4 text-sm text-gray-600">
               <span>
                 Phase: <strong className="text-gray-900">{session.roomStatus}</strong>

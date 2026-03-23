@@ -186,6 +186,7 @@ export function LobbyPlayerList({
           playerId={playerId}
           timerStartedAt={timerStartedAt}
           incomingDrawing={incomingDrawing}
+          players={playerList}
         />
       );
     }
@@ -195,10 +196,155 @@ export function LobbyPlayerList({
         roundId={roundId}
         playerId={playerId}
         timerStartedAt={timerStartedAt}
+        players={playerList}
       />
     );
   }
 
+  if (isHost) {
+    return (
+      <>
+        <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto">
+          {/* Left: QR Code Panel */}
+          <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
+            <div className="bg-surface-container-lowest rounded-xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 flex-grow relative group cursor-pointer transition-transform hover:rotate-1 min-h-[300px]">
+              <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl group-hover:opacity-0 transition-opacity">
+                <span className="material-symbols-outlined text-6xl text-primary mb-4">qr_code_2</span>
+                <p className="font-headline text-xl text-on-surface-variant font-bold">Tap to Reveal QR</p>
+              </div>
+              <div className="w-48 h-48 bg-on-surface rounded-lg p-4 grid grid-cols-4 grid-rows-4 gap-2 opacity-10">
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-2 row-span-2"></div>
+              </div>
+              <div className="mt-8 text-center">
+                <h2 className="font-headline text-2xl font-extrabold text-primary mb-2">Scan to Join!</h2>
+                <p className="text-on-surface-variant max-w-xs mx-auto text-sm font-medium">Point your camera here to enter the sketchpad directly on your phone.</p>
+              </div>
+            </div>
+            <div className="bg-tertiary-container/30 rounded-xl p-6 flex items-center gap-4">
+              <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+              <div>
+                <p className="font-bold text-on-tertiary-container font-headline tracking-tight">Pro Tip</p>
+                <p className="text-sm text-on-tertiary-container/80 font-medium">The game is best with 6+ players for maximum chaos!</p>
+              </div>
+            </div>
+          </section>
+
+          {/* Right: Players Grid */}
+          <section className="flex-grow flex flex-col gap-6 overflow-hidden max-w-full">
+            <div className="flex justify-between items-end">
+              <h3 className="font-headline text-3xl font-black text-secondary tracking-tight">Joined Players ({playerList.length}/8)</h3>
+              <span className="font-label text-on-surface-variant font-bold text-sm">
+                {8 - playerList.length > 0 ? `Waiting for ${8 - playerList.length} more...` : "Room is full!"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 content-start pb-10">
+              {playerList.map((p, index) => {
+                const isHostPlayer = p.id === currentHostId;
+                const initials = p.nickname.slice(0, 2).toUpperCase();
+                
+                // Varied tilt/rotation for players to match living doodle
+                const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
+                const bgRound = index % 3 === 0 ? "bg-secondary text-on-secondary sketch-shadow-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container" : "bg-tertiary-container text-on-tertiary-container";
+                const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
+                
+                return (
+                  <div key={p.id} className={`${cardBg} p-6 rounded-xl flex flex-col items-center gap-3 ${rotation} relative shadow-sm border border-outline-variant/10 transition-transform hover:scale-105`}>
+                    <div className="relative">
+                      <div className={`w-20 h-20 rounded-full flex items-center justify-center font-headline text-3xl font-bold ${bgRound}`}>
+                        {initials}
+                      </div>
+                      {isHostPlayer && (
+                        <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] px-2 py-1 rounded-full font-label uppercase font-bold tracking-widest shadow-sm">Host</div>
+                      )}
+                    </div>
+                    <span className="font-headline text-lg font-bold truncate w-full text-center text-on-surface">{p.nickname}</span>
+                    <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                  </div>
+                );
+              })}
+
+              {/* Empty Seats */}
+              {Array.from({ length: Math.max(0, 8 - playerList.length) }).map((_, i) => (
+                <div key={i} className="border-4 border-dashed border-outline-variant/20 p-6 rounded-xl flex flex-col items-center justify-center gap-2 opacity-60 min-h-[160px] bg-surface-container-lowest/50">
+                  <span className="material-symbols-outlined text-4xl text-outline-variant">person_add</span>
+                  <span className="font-label text-xs uppercase tracking-wider font-bold text-outline-variant">Seat {playerList.length + i + 1}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        {/* Footer Settings & Actions */}
+        <footer className="bg-[#ffffff]/95 dark:bg-stone-950/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 rounded-t-[3rem] border-t-2 border-[#e2dcd1] dark:border-stone-800 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
+          <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center px-8 lg:px-16 py-6 lg:py-8 gap-6 md:gap-0">
+            <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center">
+              <div className="flex flex-col items-center md:items-start">
+                <span className="font-label text-[10px] uppercase tracking-[0.2em] text-outline-variant font-bold mb-3">Game Settings</span>
+                <div className="flex gap-6 items-center">
+                  <div className="flex flex-col items-center md:items-start">
+                    <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Rounds</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setNumRounds(Math.max(3, numRounds - 1))} className="text-secondary hover:text-primary active:scale-90 transition-all">
+                         <span className="material-symbols-outlined">remove_circle</span>
+                      </button>
+                      <span className="font-headline text-2xl font-extrabold text-on-surface w-4 text-center">{numRounds}</span>
+                      <button onClick={() => setNumRounds(Math.min(8, numRounds + 1))} className="text-secondary hover:text-primary active:scale-90 transition-all">
+                         <span className="material-symbols-outlined">add_circle</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="h-10 w-px bg-outline-variant/30"></div>
+                  <div className="flex flex-col items-center md:items-start group cursor-pointer" onClick={() => setScoringMode(scoringMode === "friendly" ? "competitive" : "friendly")}>
+                    <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scoring Mode</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-headline text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
+                      <span className="material-symbols-outlined text-secondary text-sm group-hover:rotate-180 transition-transform">swap_vert</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden xl:block h-12 w-px bg-outline-variant/30"></div>
+              <div className="hidden xl:block text-outline font-label uppercase tracking-widest text-sm font-bold">
+                {playerList.length} of 8 players ready
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 lg:gap-8 w-full md:w-auto justify-between md:justify-end">
+              <div className="flex flex-col items-center bg-secondary-container/30 px-6 py-2 rounded-xl border border-secondary/10">
+                <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-0.5">Room Code</span>
+                <span className="font-headline text-2xl font-black tracking-widest text-on-secondary-container">{code}</span>
+              </div>
+              <div className="flex items-center relative">
+                <button
+                  onClick={handleStart}
+                  disabled={!canStart || starting}
+                  className={`rounded-full px-8 lg:px-12 py-4 lg:py-5 font-headline font-bold text-lg lg:text-xl flex items-center gap-3 transition-all ${
+                    canStart && !starting
+                      ? "bg-primary text-on-primary hover:-translate-y-1 hover:shadow-lg active:scale-95 active:shadow-md sketch-shadow-primary"
+                      : "bg-surface-container-highest text-outline-variant cursor-not-allowed opacity-80"
+                  }`}
+                >
+                  <span>{starting ? "Starting..." : "Start Game"}</span>
+                  <span className="material-symbols-outlined font-bold">{starting ? "hourglass_empty" : "play_arrow"}</span>
+                </button>
+                {error && <div className="absolute -top-12 right-0 bg-error text-on-error font-label text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg animate-bounce sketch-shadow">{error}</div>}
+              </div>
+            </div>
+          </div>
+        </footer>
+        {!canStart && (
+          <div className="fixed bottom-36 md:bottom-32 right-8 md:right-16 bg-error-container text-on-error-container px-4 py-2 rounded-xl font-label text-xs uppercase font-bold animate-bounce shadow-lg z-50 sketch-shadow border-2 border-error">
+            Min. 4 Players Required
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Player View (Not Host)
   return (
     <main className="flex-grow container mx-auto px-4 py-8 max-w-5xl">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

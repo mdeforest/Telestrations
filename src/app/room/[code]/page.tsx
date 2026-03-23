@@ -55,6 +55,7 @@ export default async function LobbyPage({ params }: Props) {
         <div className="bg-surface-variant h-px w-full"></div>
       </header>
 
+      {/* Main Content Area */}
       <LobbyPlayerList
         code={upperCode}
         initialPlayers={playerList}

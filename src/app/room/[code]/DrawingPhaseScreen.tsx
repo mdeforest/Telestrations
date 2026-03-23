@@ -5,6 +5,7 @@ import { getAblyClient } from "@/lib/realtime/client";
 import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
+import { PlayerWaitingScreen } from "./PlayerWaitingScreen";
 
 const ROUND_DURATION_SECONDS = 60;
 
@@ -14,6 +15,7 @@ interface Props {
   playerId: string;
   /** ISO string from the server; null means the timer hasn't started yet */
   timerStartedAt: string | null;
+  players: { id: string; nickname: string; seatOrder: number }[];
 }
 
 /**
@@ -25,7 +27,7 @@ interface Props {
  * - A submit button
  * - A "Waiting for others" screen after submission
  */
-export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: Props) {
+export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, players }: Props) {
   const [secondsLeft, setSecondsLeft] = useState<number>(ROUND_DURATION_SECONDS);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -126,47 +128,32 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt }: 
   const timerUrgent = secondsLeft <= 10;
 
   if (submitted) {
-    return (
-      <div className="flex flex-col items-center gap-6 py-12">
-        <div className="text-5xl">✏️</div>
-        <h2 className="text-2xl font-bold">Waiting for others…</h2>
-        <p className="text-gray-500 text-center max-w-xs">
-          Your drawing is in! Hang tight while the rest of the table finishes.
-        </p>
-        <div className="flex gap-1 mt-2">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
-          ))}
-        </div>
-      </div>
-    );
+    return <PlayerWaitingScreen players={players} localPlayerId={playerId} phase="drawing" />;
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-      {/* Countdown */}
-      <div
-        className={`text-5xl font-black tabular-nums transition-colors ${
-          timerUrgent ? "text-red-600" : "text-gray-900"
-        }`}
-        aria-label={`${secondsLeft} seconds remaining`}
-        aria-live="polite"
-      >
-        {timeLabel}
-      </div>
-
-      {entryInfo?.wordToDraw && (
-        <div className="text-center">
-          <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">Draw this</p>
-          <p className="text-2xl font-bold text-gray-900">{entryInfo.wordToDraw}</p>
+    <div className="flex flex-col flex-grow items-center w-full">
+      {/* Top Navigation Shell (Suppressing full TopAppBar via relative overlap or positioning locally) */}
+      <header className="flex justify-between items-center w-full px-4 sm:px-6 py-4 bg-surface z-30 border-b border-surface-variant">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="bg-surface-container-highest p-2 rounded-full hidden sm:block">
+            <span className="material-symbols-outlined text-primary">brush</span>
+          </div>
+          <h1 className="font-headline font-extrabold tracking-tight text-lg sm:text-xl text-on-surface">
+            Draw: <span className="text-primary italic">{entryInfo?.wordToDraw ?? "..."}</span>
+          </h1>
         </div>
-      )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+        {/* Timer: Heat-Up Element */}
+        <div className={`px-4 sm:px-6 py-2 rounded-full flex items-center gap-2 border-2 transition-colors ${timerUrgent ? "bg-error-container text-on-error-container border-error sketch-shadow" : "bg-tertiary-container text-on-tertiary-container border-transparent sketch-shadow-tertiary"}`}>
+          <span className="material-symbols-outlined font-bold">timer</span>
+          <span className={`font-label font-bold text-xl sm:text-2xl tracking-widest ${timerUrgent ? "animate-pulse" : ""}`}>
+            {String(minutes).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+          </span>
+        </div>
+      </header>
+
+      {error && <p className="text-sm text-red-600 mt-2 bg-error-container px-4 py-2 rounded-md font-bold">{error}</p>}
 
       <DrawingCanvas
         onSubmit={handleSubmit}

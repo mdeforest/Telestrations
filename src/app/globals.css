@@ -19,9 +19,19 @@
 .sketch-shadow-secondary {
     box-shadow: 4px 4px 0px 0px var(--tw-color-secondary-dim, #00528b);
 }
+.canvas-paper {
+    background-image: 
+        radial-gradient(var(--tw-color-surface-variant, #e2dcd1) 0.5px, transparent 0.5px),
+        radial-gradient(var(--tw-color-surface-variant, #e2dcd1) 0.5px, var(--tw-color-surface-container-lowest, #ffffff) 0.5px);
+    background-size: 20px 20px;
+    background-position: 0 0, 10px 10px;
+}
 .paper-stack-1 {
     transform: rotate(-1deg);
 }
 .paper-stack-2 {
     transform: rotate(1.5deg);
+}
+.wonky-input {
+    transform: rotate(-0.5deg);
 }

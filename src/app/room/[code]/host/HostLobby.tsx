@@ -137,6 +137,7 @@ export function HostLobby({
         code={code}
         roundId={roundId}
         timerStartedAt={timerStartedAt}
+        players={playerList}
       />
     );
   }
@@ -156,107 +157,154 @@ export function HostLobby({
     return (
       <HostPromptsWaiting
         code={code}
-        totalPlayers={playerList.length}
+        players={playerList}
         initialSelectedCount={initialSelectedCount}
       />
     );
   }
 
   return (
-    <div className="w-full max-w-sm flex flex-col gap-6">
-      {/* QR code — opt-in so other players at the TV don't accidentally scan it */}
-      <section className="flex flex-col items-center gap-2">
-        {urlInfo.isLocalhost && (
-          <p className="text-xs text-amber-600 text-center">
-            Open this page via your local IP so the QR works on your phone.
-          </p>
-        )}
-        {showQr && urlInfo.connectUrl ? (
-          <>
-            <QRCodeSVG value={urlInfo.connectUrl} size={160} />
-            <p className={`text-xs font-medium ${phoneConnected ? "text-green-600" : "text-gray-500"}`}>
-              {phoneConnected ? "✓ Phone connected" : "Scan to play on your phone"}
+    <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
+      {/* Left: QR Code Panel */}
+      <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
+        <div className="bg-surface-container-lowest rounded-xl p-10 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 flex-grow relative group transition-transform hover:rotate-1 min-h-[300px]">
+          {urlInfo.connectUrl ? (
+             <QRCodeSVG value={urlInfo.connectUrl} size={192} className="mb-6 opacity-90 group-hover:opacity-100 transition-opacity" />
+          ) : (
+             <div className="w-48 h-48 bg-on-surface rounded-lg p-4 grid grid-cols-4 grid-rows-4 gap-2 opacity-10 mb-6">
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-1 row-span-1"></div>
+                <div className="bg-surface col-span-2 row-span-2"></div>
+             </div>
+          )}
+          <div className="mt-2 text-center">
+            <h2 className="font-headline text-2xl font-extrabold text-primary mb-2">Scan to Join!</h2>
+            <p className="text-on-surface-variant max-w-xs mx-auto text-sm font-medium">Point your camera here to enter the sketchpad directly on your phone.</p>
+            {urlInfo.isLocalhost && (
+               <p className="text-xs text-amber-600 mt-2 font-bold bg-amber-100 px-3 py-1 rounded-full uppercase tracking-wider sketch-shadow-secondary shadow-sm">Open this page via local IP</p>
+            )}
+            <p className={`text-[10px] uppercase font-bold tracking-widest mt-4 ${phoneConnected ? "text-green-600" : "text-outline-variant"}`}>
+              {phoneConnected ? "✓ Phone connected" : "Waiting for phone..."}
             </p>
-          </>
-        ) : (
-          <button
-            onClick={() => setShowQr(true)}
-            className="text-sm text-blue-600 underline underline-offset-2"
-          >
-            {phoneConnected ? "✓ Phone connected — scan again" : "Connect your phone"}
-          </button>
-        )}
-      </section>
-
-      <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-3">
-          Players ({playerList.length})
-        </h2>
-        <ul className="space-y-2">
-          {playerList.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-3 rounded-lg border px-4 py-3 text-lg"
-            >
-              <span className="text-gray-400 w-6 text-right">{p.seatOrder}</span>
-              <span className="font-medium">{p.nickname}</span>
-              {p.id === hostPlayerId && (
-                <span className="ml-auto text-xs text-blue-500">host</span>
-              )}
-            </li>
-          ))}
-        </ul>
-        {playerList.length < 4 && (
-          <p className="mt-3 text-sm text-amber-600">
-            Waiting for players… ({playerList.length} / 4 minimum)
-          </p>
-        )}
-      </section>
-
-      <section className="flex flex-col gap-4 border-t pt-4">
-        <div className="flex items-center justify-between">
-          <label htmlFor="host-rounds" className="font-medium">Rounds</label>
-          <select
-            id="host-rounds"
-            value={numRounds}
-            onChange={(e) => setNumRounds(Number(e.target.value))}
-            className="border rounded px-3 py-1.5 text-base bg-white"
-          >
-            {[3, 4, 5, 6, 7, 8].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="font-medium">Scoring</span>
-          <div className="flex rounded-lg border overflow-hidden text-sm">
-            {(["friendly", "competitive"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setScoringMode(mode)}
-                className={`px-4 py-1.5 capitalize transition-colors ${
-                  scoringMode === mode
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
           </div>
         </div>
-
-        {startError && <p className="text-sm text-red-600">{startError}</p>}
-
-        <button
-          onClick={handleStart}
-          disabled={!canStart || starting}
-          className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-        >
-          {starting ? "Starting…" : "Start Game"}
-        </button>
+        <div className="bg-tertiary-container/30 rounded-xl p-6 flex items-center gap-4 border border-tertiary/20">
+          <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+          <div>
+            <p className="font-bold text-on-tertiary-container font-headline tracking-tight">Pro Tip</p>
+            <p className="text-sm text-on-tertiary-container/80 font-medium">The game is best with 6+ players for maximum chaos! Wait for everyone to join before starting.</p>
+          </div>
+        </div>
       </section>
-    </div>
+
+      {/* Right: Players Grid */}
+      <section className="flex-grow flex flex-col gap-6 overflow-hidden max-w-full">
+        <div className="flex justify-between items-end mb-2 border-b-2 border-outline-variant/20 pb-4">
+          <h3 className="font-headline text-3xl font-black text-secondary tracking-tight">Joined Players <span className="text-primary">({playerList.length}/8)</span></h3>
+          <span className="font-label text-on-surface-variant font-bold text-sm tracking-widest uppercase">
+            {8 - playerList.length > 0 ? `Waiting for ${8 - playerList.length} more` : "Room is full!"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 content-start pb-10">
+          {playerList.map((p, index) => {
+            const isHostPlayer = p.id === hostPlayerId;
+            const initials = p.nickname.slice(0, 2).toUpperCase();
+            
+            // Varied tilt/rotation for players to match living doodle
+            const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
+            const bgRound = index % 3 === 0 ? "bg-secondary text-on-secondary sketch-shadow-secondary border border-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container border border-primary sketch-shadow-primary" : "bg-tertiary-container text-on-tertiary-container border border-tertiary sketch-shadow";
+            const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
+            
+            return (
+              <div key={p.id} className={`${cardBg} p-6 col-span-1 rounded-xl flex flex-col items-center gap-3 ${rotation} relative shadow-sm border border-outline-variant/10 transition-transform hover:scale-105 min-h-[160px] justify-center`}>
+                <div className="relative">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center font-headline text-3xl font-bold ${bgRound}`}>
+                    {initials}
+                  </div>
+                  {isHostPlayer && (
+                    <div className="absolute -top-2 -right-2 bg-primary text-white text-[10px] px-2 py-1 rounded-full font-label uppercase font-bold tracking-widest shadow-sm">Host</div>
+                  )}
+                </div>
+                <span className="font-headline text-lg font-bold truncate w-full text-center text-on-surface mt-2">{p.nickname}</span>
+                <div className="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] absolute bottom-4"></div>
+              </div>
+            );
+          })}
+
+          {/* Empty Seats */}
+          {Array.from({ length: Math.max(0, 8 - playerList.length) }).map((_, i) => (
+            <div key={i} className="border-4 border-dashed border-outline-variant/20 p-6 rounded-xl flex flex-col items-center justify-center gap-2 opacity-60 min-h-[160px] bg-surface-container-lowest/50 group hover:border-outline-variant/40 transition-colors">
+              <span className="material-symbols-outlined text-4xl text-outline-variant group-hover:scale-110 transition-transform">person_add</span>
+              <span className="font-label text-xs uppercase tracking-wider font-bold text-outline-variant">Seat {playerList.length + i + 1}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer Settings & Actions */}
+      <footer className="bg-[#ffffff]/95 dark:bg-stone-950/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 rounded-t-[3rem] border-t-2 border-[#e2dcd1] dark:border-stone-800 shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center px-8 lg:px-16 py-6 lg:py-8 gap-6 md:gap-0">
+          <div className="flex flex-col md:flex-row gap-8 lg:gap-12 items-center">
+            <div className="flex flex-col items-center md:items-start">
+              <span className="font-label text-[10px] uppercase tracking-[0.2em] text-outline-variant font-bold mb-3">Game Settings</span>
+              <div className="flex gap-6 items-center">
+                <div className="flex flex-col items-center md:items-start">
+                  <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Rounds</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setNumRounds(Math.max(3, numRounds - 1))} className="text-secondary hover:text-primary active:scale-90 transition-all cursor-pointer">
+                       <span className="material-symbols-outlined">remove_circle</span>
+                    </button>
+                    <span className="font-headline text-2xl font-extrabold text-on-surface w-4 text-center">{numRounds}</span>
+                    <button onClick={() => setNumRounds(Math.min(8, numRounds + 1))} className="text-secondary hover:text-primary active:scale-90 transition-all cursor-pointer">
+                       <span className="material-symbols-outlined">add_circle</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="h-10 w-px bg-outline-variant/30"></div>
+                <div className="flex flex-col items-center md:items-start group cursor-pointer" onClick={() => setScoringMode(scoringMode === "friendly" ? "competitive" : "friendly")}>
+                  <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scoring Mode</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-headline text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
+                    <span className="material-symbols-outlined text-secondary text-sm group-hover:rotate-180 transition-transform">swap_vert</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="hidden xl:block h-12 w-px bg-outline-variant/30"></div>
+            <div className="hidden xl:block text-outline font-label uppercase tracking-widest text-sm font-bold">
+              {playerList.length} of 8 players ready
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 lg:gap-8 w-full md:w-auto justify-between md:justify-end">
+            <div className="flex flex-col items-center bg-secondary-container/30 px-6 py-2 rounded-xl border border-secondary/10">
+              <span className="font-label text-[10px] font-bold text-secondary uppercase tracking-widest mb-0.5">Room Code</span>
+              <span className="font-headline text-2xl font-black tracking-widest text-on-secondary-container">{code}</span>
+            </div>
+            <div className="flex items-center relative">
+              <button
+                onClick={handleStart}
+                disabled={!canStart || starting}
+                className={`rounded-full px-8 lg:px-12 py-4 lg:py-5 font-headline font-bold text-lg lg:text-xl flex items-center gap-3 transition-all ${
+                  canStart && !starting
+                    ? "bg-primary text-on-primary hover:-translate-y-1 hover:shadow-lg active:scale-95 active:shadow-md sketch-shadow-primary uppercase tracking-widest"
+                    : "bg-surface-container-highest text-outline-variant cursor-not-allowed opacity-80 uppercase tracking-widest"
+                }`}
+              >
+                <span>{starting ? "Starting..." : "Start Game"}</span>
+                <span className="material-symbols-outlined font-bold">{starting ? "hourglass_empty" : "play_arrow"}</span>
+              </button>
+              {startError && <div className="absolute -top-12 left-1/2 -translate-x-1/2 whitespace-nowrap bg-error text-on-error font-label text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg animate-bounce sketch-shadow shadow-md z-50">{startError}</div>}
+            </div>
+          </div>
+        </div>
+      </footer>
+      {!canStart && (
+        <div className="fixed bottom-36 md:bottom-32 right-8 md:right-16 bg-error-container text-on-error-container px-4 py-2 rounded-xl font-label text-xs uppercase font-bold animate-bounce shadow-lg z-50 sketch-shadow border-2 border-error">
+          Min. 4 Players Required
+        </div>
+      )}
+    </main>
   );
 }

@@ -37,41 +37,41 @@ interface Props {
   initialEntryIndex: number;
 }
 
-/** Single step in the chain timeline: prompt → drawing → guess → … */
-function ChainStep({
-  label,
+/** Single entry in the timeline strip at footer */
+function TimelineStep({
   content,
+  type,
   isActive,
   isFuture,
+  author,
 }: {
-  label: string;
   content: string;
+  type: "prompt" | "drawing" | "guess";
   isActive: boolean;
   isFuture: boolean;
+  author: string;
 }) {
+  const icon = type === "prompt" ? "edit_note" : type === "drawing" ? "brush" : "lightbulb";
+  const colorClass = isActive
+    ? "bg-primary text-on-primary border-primary sketch-shadow-primary scale-105"
+    : isFuture
+    ? "bg-surface-container-high border-outline-variant/20 text-outline-variant opacity-40"
+    : "bg-surface-container-lowest border-outline-variant/30 text-on-surface";
+
   return (
-    <div
-      className={`flex flex-col items-center gap-1 transition-opacity ${
-        isFuture ? "opacity-20" : "opacity-100"
-      }`}
-    >
-      <div
-        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors max-w-[120px] text-center truncate ${
-          isActive
-            ? "bg-white text-gray-950 border-white"
-            : "bg-gray-800 text-gray-300 border-gray-700"
-        }`}
-        title={content}
-      >
-        {content.length > 16 ? content.slice(0, 14) + "…" : content}
+    <div className={`flex flex-col items-center gap-1 transition-all duration-500 shrink-0`}>
+      <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all ${colorClass}`}>
+        <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
       </div>
-      <p className="text-xs text-gray-500 truncate max-w-[120px] text-center">{label}</p>
+      <span className="text-[9px] font-label uppercase tracking-widest text-outline-variant font-bold max-w-[56px] text-center truncate" title={author}>{author}</span>
     </div>
   );
 }
 
-function ChainArrow() {
-  return <span className="text-gray-700 text-lg self-center pb-4">→</span>;
+function TimelineConnector({ isFuture }: { isFuture: boolean }) {
+  return (
+    <div className={`h-0.5 w-8 md:w-14 shrink-0 rounded-full transition-all duration-500 ${isFuture ? "bg-outline-variant/20" : "bg-primary/40"}`} />
+  );
 }
 
 export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialEntryIndex }: Props) {
@@ -88,8 +88,8 @@ export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialE
   useEffect(() => {
     debugFetch(`/api/rooms/${code}/reveal/books`)
       .then((r) => r.json())
-      .then((data: { books: Book[]; revealBookIndex: number; revealEntryIndex: number; status: string }) => {
-        setBooks(data.books);
+      .then((data: { books?: Book[]; revealBookIndex?: number; revealEntryIndex?: number; status?: string }) => {
+        setBooks(data.books ?? []);
         if (typeof data.revealBookIndex === "number") setBookIndex(data.revealBookIndex);
         if (typeof data.revealEntryIndex === "number") setEntryIndex(data.revealEntryIndex);
         if (data.status === "finished") setFinished(true);
@@ -160,166 +160,279 @@ export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialE
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-950">
-        <p className="text-gray-400 text-lg">Loading reveal…</p>
+      <div className="flex items-center justify-center min-h-screen bg-surface paper-texture">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-6xl text-primary animate-bounce block mb-4">auto_stories</span>
+          <p className="text-on-surface-variant text-lg font-medium font-body">Loading the big reveal...</p>
+        </div>
       </div>
     );
   }
 
   // Leaderboard screen
   if (leaderboard) {
+    const medals = ["🥇", "🥈", "🥉"];
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-8 px-8">
-        <div className="text-7xl">🏆</div>
-        <h1 className="text-5xl font-black">Leaderboard</h1>
-        <div className="w-full max-w-md flex flex-col gap-3">
+      <div className="min-h-screen bg-surface paper-texture flex flex-col items-center justify-center px-8 py-16 gap-10">
+        <div className="text-center">
+          <p className="font-label text-sm uppercase tracking-widest text-tertiary mb-3 font-bold">Game Over</p>
+          <h1 className="font-headline text-6xl font-black text-on-surface mb-2">Leaderboard</h1>
+          <p className="text-on-surface-variant font-medium">Thanks for playing! Here's how everyone did:</p>
+        </div>
+        <div className="w-full max-w-lg flex flex-col gap-4">
           {leaderboard.map((entry, i) => (
             <div
               key={entry.playerId}
-              className="flex items-center gap-4 px-6 py-4 rounded-2xl bg-gray-800 border border-gray-700"
+              className={`flex items-center gap-5 px-6 py-5 rounded-2xl border-2 transition-transform hover:scale-[1.02] ${
+                i === 0
+                  ? "bg-tertiary-container border-tertiary sketch-shadow-tertiary"
+                  : i === 1
+                  ? "bg-secondary-container/40 border-secondary/30 sketch-shadow-secondary"
+                  : "bg-surface-container-lowest border-outline-variant/30 shadow-sm"
+              }`}
+              style={{ transform: i % 2 === 0 ? "rotate(-0.5deg)" : "rotate(0.5deg)" }}
             >
-              <span className="text-2xl font-black text-gray-400 w-8 text-center">
-                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
-              </span>
-              <span className="flex-1 text-xl font-bold">{entry.nickname}</span>
-              <span className="text-lg font-semibold text-yellow-400">
+              <span className="text-3xl font-black w-10 text-center">{medals[i] ?? i + 1}</span>
+              <span className="flex-1 font-headline text-xl font-extrabold text-on-surface">{entry.nickname}</span>
+              <div className="bg-surface-container-lowest px-4 py-2 rounded-xl border border-outline-variant/20 font-label font-bold text-lg text-secondary">
                 {entry.totalPoints ?? 0} pts
-              </span>
+              </div>
             </div>
           ))}
           {leaderboard.length === 0 && (
-            <p className="text-center text-gray-500">No votes were cast.</p>
+            <p className="text-center text-on-surface-variant font-medium py-8">No votes were cast.</p>
           )}
         </div>
       </div>
     );
   }
 
-  // Game finished — friendly mode: tally votes
-  if (finished || !currentBook || !currentEntry) {
+  // Books not yet populated (API returned empty or hasn't updated yet) — show a brief wait
+  if (!currentBook || !currentEntry) {
+    if (finished) {
+      // Fall through to the finished screen below
+    } else {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-surface paper-texture">
+          <div className="text-center">
+            <span className="material-symbols-outlined text-6xl text-primary animate-bounce block mb-4">auto_stories</span>
+            <p className="text-on-surface-variant text-lg font-medium font-body">Preparing the reveal...</p>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // Game finished
+  if (finished) {
     if (scoringMode === "friendly") {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-6">
-          <div className="text-7xl">🎉</div>
-          <h1 className="text-4xl font-black">Reveal Complete!</h1>
-          <p className="text-gray-400 text-lg">Tally votes to see who won.</p>
+        <div className="min-h-screen bg-surface paper-texture flex flex-col items-center justify-center gap-8 px-8 py-16">
+          <div className="text-center">
+            <div className="w-28 h-28 bg-tertiary-container rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-tertiary sketch-shadow-tertiary">
+              <span className="text-5xl">🎉</span>
+            </div>
+            <h1 className="font-headline text-5xl font-black text-on-surface mb-3">Reveal Complete!</h1>
+            <p className="text-on-surface-variant text-lg font-medium">Tally player votes to crown the winner.</p>
+          </div>
           <button
             onClick={handleTally}
             disabled={tallying}
-            className="px-10 py-4 rounded-2xl text-xl font-bold bg-yellow-400 text-gray-950 disabled:opacity-50 hover:bg-yellow-300 transition-colors shadow-lg"
+            className={`rounded-full px-12 py-5 font-headline font-bold text-xl flex items-center gap-3 transition-all ${
+              !tallying
+                ? "bg-tertiary text-on-tertiary hover:-translate-y-1 hover:shadow-xl active:scale-95 sketch-shadow-tertiary"
+                : "bg-surface-container-high text-outline-variant cursor-not-allowed opacity-70"
+            }`}
           >
-            {tallying ? "Tallying…" : "Tally Votes & Show Leaderboard"}
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{tallying ? "hourglass_empty" : "workspace_premium"}</span>
+            {tallying ? "Tallying..." : "Tally Votes & Show Leaderboard"}
           </button>
         </div>
       );
     }
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white gap-6">
-        <div className="text-8xl">🎉</div>
-        <h1 className="text-5xl font-black">Game Over!</h1>
-        <p className="text-xl text-gray-500">Thanks for playing</p>
+      <div className="min-h-screen bg-surface paper-texture flex flex-col items-center justify-center gap-8 px-8 py-16">
+        <div className="text-center">
+          <div className="w-28 h-28 bg-primary-container rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-primary sketch-shadow-primary">
+            <span className="text-5xl">🎨</span>
+          </div>
+          <h1 className="font-headline text-5xl font-black text-on-surface mb-3">Game Over!</h1>
+          <p className="text-on-surface-variant text-lg font-medium">Thanks for doodling!</p>
+        </div>
       </div>
     );
   }
 
   const totalBooks = books.length;
   const totalEntries = currentBook.entries.length;
+  const isLastEntry = entryIndex + 1 >= totalEntries;
+  const isLastBook = bookIndex + 1 >= totalBooks;
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-950 text-white">
-      {/* Top bar — book progress */}
-      <header className="flex items-center justify-between px-8 py-4 border-b border-gray-800">
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-widest">
-            Book {bookIndex + 1} of {totalBooks}
-          </p>
-          <p className="text-2xl font-bold">
-            {currentBook.ownerNickname}&apos;s story
-          </p>
+    <div className="bg-surface font-body text-on-surface min-h-screen flex flex-col selection:bg-tertiary-container w-full" style={{ backgroundImage: "radial-gradient(#e2dcd1 1px, transparent 1px)", backgroundSize: "32px 32px" }}>
+      {/* TopAppBar */}
+      <header className="bg-[#fcf6ed]/95 backdrop-blur-md px-8 py-5 lg:px-12 z-40 border-b-2 border-outline-variant/10 shadow-sm">
+        <div className="flex justify-between items-center w-full max-w-full">
+          <div className="flex items-center gap-4">
+            <span className="text-2xl font-black text-primary font-headline truncate max-w-[180px] md:max-w-none">The Animated Sketchpad</span>
+          </div>
+          <div className="flex flex-col items-center gap-0.5">
+            <h1 className="font-headline text-xl font-bold text-primary">The Grand Reveal!</h1>
+            <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant">
+              Reviewing: <span className="text-secondary font-black">{currentBook.ownerNickname.toUpperCase()}&apos;S BOOK</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-secondary-container text-secondary font-label font-bold px-4 py-1.5 rounded-lg tracking-widest text-sm border border-secondary/20">
+              Book {bookIndex + 1}/{totalBooks}
+            </div>
+          </div>
         </div>
-        <div className="text-right text-sm text-gray-400">
-          Entry {entryIndex + 1} of {totalEntries}
+        <div className="bg-outline-variant/30 h-0.5 mt-4 rounded-full w-full">
+          <div className="bg-primary h-full rounded-full transition-all duration-700" style={{ width: `${((bookIndex * totalEntries + entryIndex + 1) / (totalBooks * totalEntries)) * 100}%` }}></div>
         </div>
       </header>
 
-      {/* Main entry display */}
-      <main className="flex-1 flex flex-col items-center justify-center gap-6 px-8 py-8">
-        {/* Author badge */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800 border border-gray-700">
-          <span className="w-2 h-2 rounded-full bg-blue-400" />
-          <span className="text-sm font-medium">{currentEntry.authorNickname}</span>
-          <span className="text-xs text-gray-400">
-            {currentEntry.type === "drawing" ? "drew" : "guessed"}
-          </span>
+      {/* Main Cinematic Canvas */}
+      <main className="flex-grow flex flex-col items-center justify-center p-6 lg:p-8 pb-36 overflow-hidden relative">
+        {/* Decorative background icons */}
+        <div className="absolute top-1/4 left-10 opacity-10 hidden lg:block pointer-events-none">
+          <span className="material-symbols-outlined text-[8rem] text-primary">draw</span>
+        </div>
+        <div className="absolute bottom-1/4 right-10 opacity-10 hidden lg:block pointer-events-none">
+          <span className="material-symbols-outlined text-[8rem] text-secondary">palette</span>
         </div>
 
-        {/* Entry content — full-screen focal point */}
-        {currentEntry.type === "drawing" ? (
-          <div className="w-full max-w-xl">
-            <DrawingCanvas
-              onSubmit={() => undefined}
-              replayStrokes={replayStrokes}
-              readOnly
-            />
+        <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-[1fr_auto_2fr_auto_1fr] gap-4 md:gap-6 items-center relative z-10">
+          {/* Left: Original Prompt */}
+          <div className="flex flex-col items-center gap-4" style={{ transform: "rotate(-1deg)" }}>
+            <div className="font-label text-xs font-bold bg-surface-container-high px-4 py-1 rounded-full text-on-surface-variant uppercase tracking-widest">Starting Word</div>
+            <div className="bg-surface-container-lowest p-8 rounded-lg sketch-shadow-secondary border-2 border-outline-variant/10 w-full text-center shadow-sm">
+              <h2 className="font-headline text-2xl lg:text-3xl font-extrabold text-secondary leading-tight">&ldquo;{currentBook.originalPrompt}&rdquo;</h2>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="material-symbols-outlined text-secondary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+              <span className="font-body font-bold text-on-surface">{currentBook.ownerNickname}</span>
+            </div>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-xs text-gray-400 uppercase tracking-widest">They guessed…</p>
-            <p className="text-6xl font-black text-center max-w-2xl leading-tight">
-              &ldquo;{currentEntry.content}&rdquo;
-            </p>
+
+          {/* Connector */}
+          <div className="hidden md:flex justify-center text-outline-variant/40">
+            <span className="material-symbols-outlined text-5xl">trending_flat</span>
           </div>
-        )}
+
+          {/* Center: Current Entry (Sketch or Guess) — Main Focal Point */}
+          <div className="relative col-span-1" style={{ transform: "rotate(1.5deg)" }}>
+            {currentEntry.type === "drawing" ? (
+              <>
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 font-label text-xs font-bold bg-primary px-6 py-2 rounded-full text-on-primary z-10 sketch-shadow-primary uppercase tracking-wider whitespace-nowrap">
+                  Sketch Reveal
+                </div>
+                <div className="bg-surface-container-lowest p-3 md:p-4 rounded-xl sketch-shadow-primary border-4 border-primary/20 overflow-hidden aspect-square">
+                  <DrawingCanvas
+                    onSubmit={() => undefined}
+                    replayStrokes={replayStrokes}
+                    readOnly
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2 font-label text-xs font-bold bg-secondary px-6 py-2 rounded-full text-on-secondary z-10 sketch-shadow-secondary uppercase tracking-wider whitespace-nowrap">
+                  The Guess
+                </div>
+                <div className="bg-surface-container-lowest p-8 rounded-lg border-4 border-dashed border-outline-variant w-full text-center relative min-h-[180px] flex items-center justify-center shadow-sm">
+                  <h2 className="font-headline text-3xl lg:text-4xl font-bold text-on-surface italic leading-snug">&ldquo;{currentEntry.content}&rdquo;</h2>
+                  <div className="absolute -top-3 -right-3 bg-error-container text-on-error-container p-1.5 rounded-full rotate-12 shadow-sm">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </div>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-center gap-2 mt-5">
+              <span className="material-symbols-outlined text-primary text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>{currentEntry.type === "drawing" ? "brush" : "lightbulb"}</span>
+              <span className="font-body font-bold text-on-surface text-base">{currentEntry.authorNickname}&apos;s {currentEntry.type === "drawing" ? "Masterpiece" : "Guess"}</span>
+            </div>
+          </div>
+
+          {/* Connector */}
+          <div className="hidden md:flex justify-center text-outline-variant/40">
+            <span className="material-symbols-outlined text-5xl">trending_flat</span>
+          </div>
+
+          {/* Right: Next entry preview (blurred/dimmed if future) */}
+          {(() => {
+            const nextEntry = currentBook.entries[entryIndex + 1];
+            if (!nextEntry) {
+              return (
+                <div className="flex flex-col items-center gap-4 opacity-30" style={{ transform: "rotate(-0.5deg)" }}>
+                  <div className="font-label text-xs font-bold bg-surface-container-high px-4 py-1 rounded-full text-on-surface-variant uppercase tracking-widest">{isLastBook ? "The End" : "Next Book"}</div>
+                  <div className="bg-surface-container-lowest p-8 rounded-lg border-2 border-dashed border-outline-variant w-full text-center min-h-[100px] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-4xl text-outline-variant">{isLastBook ? "flag" : "auto_stories"}</span>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="flex flex-col items-center gap-4 blur-[6px] opacity-50" style={{ transform: "rotate(-0.5deg)", pointerEvents: "none" }}>
+                <div className="font-label text-xs font-bold bg-surface-container-high px-4 py-1 rounded-full text-on-surface-variant uppercase tracking-widest">
+                  {nextEntry.type === "drawing" ? "Sketch" : "Guess"}
+                </div>
+                <div className="bg-surface-container-lowest p-8 rounded-lg border-2 border-outline-variant/10 w-full text-center">
+                  <p className="font-headline text-xl font-bold text-on-surface">{nextEntry.type === "drawing" ? "??" : `"..."`}</p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </main>
 
-      {/* Chain timeline — prompt → entries revealed so far */}
-      <div className="px-8 py-4 border-t border-gray-800">
-        <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 text-center">
-          Chain so far
-        </p>
-        <div className="flex items-start justify-center gap-2 overflow-x-auto pb-1">
-          {/* Original prompt */}
-          <ChainStep
-            label={`📝 ${currentBook.ownerNickname}`}
-            content={`"${currentBook.originalPrompt}"`}
+      {/* Footer: Navigation & Chain Timeline */}
+      <footer className="bg-[#ffffff]/95 backdrop-blur-md fixed bottom-0 left-0 w-full z-50 flex flex-col px-6 lg:px-16 py-5 rounded-t-[3rem] border-t-2 border-[#e2dcd1] shadow-[0px_-20px_40px_rgba(49,46,41,0.08)]">
+        {/* Chain timeline strip */}
+        <div className="flex items-center gap-1 justify-center mb-5 overflow-x-auto pb-1">
+          {/* Prompt is step 0 */}
+          <TimelineStep
+            content={currentBook.originalPrompt}
+            type="prompt"
             isActive={false}
             isFuture={false}
+            author={currentBook.ownerNickname}
           />
-
-          {/* Each entry — active = current, future = not yet revealed */}
           {currentBook.entries.map((entry, i) => (
             <Fragment key={entry.id}>
-              <ChainArrow />
-              <ChainStep
-                label={`${entry.type === "drawing" ? "🎨" : "💬"} ${entry.authorNickname}`}
-                content={
-                  entry.type === "drawing"
-                    ? "(drawing)"
-                    : `"${entry.content}"`
-                }
+              <TimelineConnector isFuture={i > entryIndex} />
+              <TimelineStep
+                content={entry.type === "drawing" ? "(sketch)" : entry.content}
+                type={entry.type}
                 isActive={i === entryIndex}
                 isFuture={i > entryIndex}
+                author={entry.authorNickname}
               />
             </Fragment>
           ))}
         </div>
-      </div>
 
-      {/* Advance button */}
-      <footer className="px-8 pb-8 pt-4 flex justify-center">
-        <button
-          onClick={handleAdvance}
-          disabled={advancing}
-          className="px-12 py-4 rounded-2xl text-xl font-bold bg-white text-gray-950 disabled:opacity-50 hover:bg-gray-100 transition-colors shadow-lg"
-        >
-          {advancing
-            ? "…"
-            : entryIndex + 1 < totalEntries
-            ? "Next Entry →"
-            : bookIndex + 1 < totalBooks
-            ? "Next Book →"
-            : "Finish"}
-        </button>
+        {/* Nav buttons */}
+        <div className="flex justify-between items-center">
+          <div className="font-label text-sm uppercase tracking-widest text-on-surface-variant">
+            <span className="font-black text-secondary">Entry {entryIndex + 1}</span> of {totalEntries}
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleAdvance}
+              disabled={advancing}
+              className={`rounded-full px-8 py-3 font-label font-bold uppercase tracking-widest text-sm flex items-center gap-2 transition-all ${
+                !advancing
+                  ? "bg-primary text-on-primary hover:rotate-1 hover:scale-105 active:scale-95 sketch-shadow-primary"
+                  : "bg-surface-container-high text-outline-variant cursor-not-allowed opacity-70"
+              }`}
+            >
+              <span>{advancing ? "..." : isLastEntry && isLastBook ? "Finish" : isLastEntry ? "Next Book" : "Next"}</span>
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
+            </button>
+          </div>
+        </div>
       </footer>
     </div>
   );

@@ -5,6 +5,7 @@ import { getAblyClient } from "@/lib/realtime/client";
 import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
+import { GuessingWaitingScreen } from "./GuessingWaitingScreen";
 
 const ROUND_DURATION_SECONDS = 60;
 
@@ -15,6 +16,7 @@ interface Props {
   timerStartedAt: string | null;
   /** JSON-serialized Stroke[] from the previous pass. Null if unavailable. */
   incomingDrawing: string | null;
+  players: { id: string; nickname: string; seatOrder: number }[];
 }
 
 /**
@@ -32,6 +34,7 @@ export function GuessingPhaseScreen({
   playerId,
   timerStartedAt,
   incomingDrawing,
+  players,
 }: Props) {
   const [secondsLeft, setSecondsLeft] = useState<number>(ROUND_DURATION_SECONDS);
   const [submitted, setSubmitted] = useState(false);
@@ -138,37 +141,25 @@ export function GuessingPhaseScreen({
   const timerUrgent = secondsLeft <= 10;
 
   if (submitted) {
-    return (
-      <div className="flex flex-col items-center gap-6 py-12">
-        <div className="text-5xl">🤔</div>
-        <h2 className="text-2xl font-bold">Waiting for others…</h2>
-        <p className="text-gray-500 text-center max-w-xs">
-          Your guess is in! Hang tight while the rest of the table finishes.
-        </p>
-        <div className="flex gap-1 mt-2">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
-          ))}
-        </div>
-      </div>
-    );
+    return <GuessingWaitingScreen players={players} localPlayerId={playerId} />;
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-      {/* Countdown */}
-      <div
-        className={`text-5xl font-black tabular-nums transition-colors ${
-          timerUrgent ? "text-red-600" : "text-gray-900"
-        }`}
-        aria-label={`${secondsLeft} seconds remaining`}
-        aria-live="polite"
-      >
-        {timeLabel}
+    <main className="flex-grow flex flex-col items-center px-4 pt-8 pb-24 max-w-2xl mx-auto w-full gap-8">
+      {/* Header Instruction */}
+      <div className="text-center space-y-2">
+        <h2 className="font-headline font-extrabold text-3xl md:text-4xl text-primary tracking-tight">What is this drawing?</h2>
+        <p className="font-body text-on-surface-variant font-semibold">
+          Previous player: <span className="text-secondary">@Unknown</span>
+        </p>
+      </div>
+
+      {/* Timer Element */}
+      <div className={`flex items-center gap-3 px-6 py-2 rounded-full wonky-input border-2 transition-colors ${timerUrgent ? "bg-error-container text-on-error-container border-error shadow-[2px_2px_0px_#9f0519]" : "bg-tertiary-container text-on-tertiary-container border-transparent shadow-[2px_2px_0px_#594a00]"}`}>
+        <span className="material-symbols-outlined">timer</span>
+        <span className={`font-label font-bold text-xl tracking-widest ${timerUrgent ? "animate-pulse" : ""}`}>
+          {timeLabel}
+        </span>
       </div>
 
       {/* Incoming drawing — read-only canvas via DrawingCanvas replay */}
@@ -178,32 +169,37 @@ export function GuessingPhaseScreen({
         readOnly
       />
 
-      <p className="text-sm text-gray-500 font-medium uppercase tracking-widest">
-        What is this drawing?
-      </p>
+      {error && <p className="text-sm text-red-600 font-bold bg-error-container px-4 py-2 rounded-lg">{error}</p>}
 
-      {/* Guess input */}
-      <input
-        type="text"
-        value={guess}
-        onChange={(e) => setGuess(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-        placeholder="Type your best guess…"
-        maxLength={200}
-        disabled={submitting}
-        className="w-full rounded-xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-        aria-label="Your guess"
-      />
+      {/* Input Section */}
+      <div className="w-full max-w-md space-y-6">
+        <div className="relative group">
+          <input
+            autoFocus
+            type="text"
+            value={guess}
+            onChange={(e) => setGuess(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+            placeholder="Type your guess..."
+            maxLength={200}
+            disabled={submitting}
+            className="w-full bg-surface-container-lowest border-none ring-2 ring-outline-variant/15 focus:ring-primary/40 rounded-xl py-5 px-6 text-xl font-headline font-bold text-on-surface placeholder:text-outline-variant/60 focus:outline-none transition-all wonky-input shadow-sm disabled:opacity-50"
+            aria-label="Your guess"
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant/30 hidden md:block">
+            <span className="font-label text-xs uppercase tracking-tighter">Press Enter</span>
+          </div>
+        </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <button
-        onClick={handleSubmit}
-        disabled={submitting || !entryInfo || !guess.trim()}
-        className="w-full py-3 rounded-xl text-lg font-bold bg-blue-600 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
-      >
-        {submitting ? "Submitting…" : "Submit Guess"}
-      </button>
-    </div>
+        {/* Action Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={submitting || !entryInfo || !guess.trim()}
+          className="w-full bg-primary text-on-primary font-headline font-extrabold text-xl py-5 rounded-xl sketch-shadow transition-all hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_#962700] active:scale-[0.98] active:translate-y-[2px] active:shadow-none disabled:opacity-50 disabled:grayscale"
+        >
+          {submitting ? "Submitting..." : "Submit Guess"}
+        </button>
+      </div>
+    </main>
   );
 }

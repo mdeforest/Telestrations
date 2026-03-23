@@ -25,12 +25,12 @@ export function PromptSelectionScreen({ roundId, onSelected }: Props) {
   useEffect(() => {
     debugFetch(`/api/rounds/${roundId}/prompts`)
       .then((r) => r.json())
-      .then((data: { options: PromptOption[]; alreadySelected: boolean }) => {
+      .then((data: { options?: PromptOption[]; alreadySelected?: boolean }) => {
         if (data.alreadySelected) {
           setSelected(true);
           onSelected?.();
         } else {
-          setOptions(data.options);
+          setOptions(data.options ?? []);
         }
         setLoading(false);
       })
@@ -70,59 +70,107 @@ export function PromptSelectionScreen({ roundId, onSelected }: Props) {
     }
   }
 
+const STYLE_MAP = [
+  {
+    label: "Easy",
+    icon: "auto_awesome",
+    shadow: "sketch-shadow-primary",
+    rotate: "hover:-translate-y-1 hover:rotate-1",
+    labelColor: "text-primary-dim",
+    iconBgHover: "group-hover:bg-primary-container",
+    iconBgDef: "bg-primary-container/20",
+    iconColor: "text-primary"
+  },
+  {
+    label: "Medium",
+    icon: "psychology",
+    shadow: "sketch-shadow-secondary",
+    rotate: "hover:-translate-y-1 hover:-rotate-1",
+    labelColor: "text-secondary-dim",
+    iconBgHover: "group-hover:bg-secondary-container",
+    iconBgDef: "bg-secondary-container/20",
+    iconColor: "text-secondary"
+  },
+  {
+    label: "Hard",
+    icon: "local_fire_department",
+    shadow: "sketch-shadow-tertiary",
+    rotate: "hover:-translate-y-1 hover:rotate-2",
+    labelColor: "text-tertiary-dim",
+    iconBgHover: "group-hover:bg-tertiary-container",
+    iconBgDef: "bg-tertiary-container/20",
+    iconColor: "text-tertiary"
+  }
+];
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <p className="text-gray-400">Loading prompts…</p>
-      </div>
+      <main className="flex-grow flex flex-col items-center justify-center px-6 pt-12 max-w-2xl mx-auto w-full">
+        <div className="w-24 h-24 bg-surface-container-low rounded-full flex items-center justify-center relative mb-8">
+          <span className="material-symbols-outlined text-5xl text-primary animate-bounce">brush</span>
+          <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-spin" style={{ animationDuration: "10s" }}></div>
+        </div>
+        <h2 className="text-2xl font-bold font-headline">Loading prompts…</h2>
+      </main>
     );
   }
 
   if (selected) {
     return (
-      <div className="flex flex-col items-center gap-6 py-12">
-        <div className="text-4xl">⏳</div>
-        <h2 className="text-2xl font-bold">Waiting for others…</h2>
-        <p className="text-gray-500 text-center max-w-xs">
-          Your prompt is locked in. The round begins once everyone has chosen.
-        </p>
-        <div className="flex gap-1 mt-2">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="w-2 h-2 rounded-full bg-blue-400 animate-bounce"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            />
-          ))}
+      <main className="flex-grow flex flex-col items-center justify-center px-6 pt-12 pb-32 max-w-2xl mx-auto w-full">
+        <div className="bg-tertiary-container/30 w-full p-8 rounded-[2rem] text-center mb-10 border border-tertiary/10 shadow-sm transform rotate-1">
+          <span className="material-symbols-outlined text-tertiary text-6xl mb-4 animate-pulse">hourglass_top</span>
+          <h2 className="font-headline text-3xl font-extrabold text-on-surface mb-2">Waiting for others</h2>
+          <p className="font-body text-on-surface-variant max-w-sm mx-auto font-medium">
+            Your prompt is locked in. The round begins once everyone has chosen.
+          </p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-sm">
-      <div>
-        <h2 className="text-xl font-bold mb-1">Choose your prompt</h2>
-        <p className="text-sm text-gray-500">
-          Pick one — only you can see your choice.
-        </p>
+    <main className="flex-grow flex flex-col items-center px-6 py-12 pb-32 max-w-2xl mx-auto w-full">
+      {/* Floating Sketch Background Decor */}
+      <div className="fixed top-24 -left-12 opacity-5 pointer-events-none select-none hidden md:block">
+        <span className="material-symbols-outlined text-[12rem]">gesture</span>
+      </div>
+      <div className="fixed bottom-32 -right-8 rotate-12 opacity-5 pointer-events-none select-none hidden md:block">
+        <span className="material-symbols-outlined text-[10rem]">draw</span>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="text-center mb-10 -rotate-1 relative z-10 text-balance">
+        <span className="font-label text-secondary uppercase tracking-[0.2em] text-sm mb-2 block font-bold">Round Start</span>
+        <h2 className="font-headline text-4xl md:text-5xl font-extrabold text-on-surface leading-tight">
+          Choose your <span className="text-primary italic">prompt</span>
+        </h2>
+      </div>
 
-      <ul className="flex flex-col gap-3">
-        {options.map((opt) => (
-          <li key={opt.id}>
+      {error && <p className="mb-6 px-4 py-3 bg-error-container/20 text-error font-bold rounded-xl relative z-10">{error}</p>}
+
+      <div className="w-full space-y-6 flex flex-col relative z-10">
+        {options.map((opt, i) => {
+          const config = STYLE_MAP[i % STYLE_MAP.length];
+          return (
             <button
+              key={opt.id}
               onClick={() => handleSelect(opt.id)}
               disabled={submitting}
-              className="w-full text-left px-5 py-4 rounded-xl border-2 border-gray-200 font-medium text-lg hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`group relative w-full text-left bg-surface-container-lowest p-6 sm:p-8 rounded-[1.5rem] border-2 border-transparent transition-all duration-200 ${config.rotate} active:translate-y-0 active:scale-[0.98] ${config.shadow} disabled:opacity-50 disabled:grayscale`}
             >
-              {opt.text}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className={`font-label ${config.labelColor} text-xs tracking-widest font-bold uppercase block mb-1`}>{config.label}</span>
+                  <h3 className="font-headline text-2xl sm:text-3xl font-bold text-on-surface leading-tight">{opt.text}</h3>
+                </div>
+                <div className={`${config.iconBgDef} p-4 rounded-full ${config.iconBgHover} transition-colors hidden sm:block`}>
+                  <span className={`material-symbols-outlined ${config.iconColor} scale-125`}>{config.icon}</span>
+                </div>
+              </div>
             </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+          );
+        })}
+      </div>
+    </main>
   );
 }
