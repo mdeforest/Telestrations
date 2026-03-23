@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import { players, rooms } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { getAblyRest } from "@/lib/realtime/server";
 import { channels } from "@/lib/realtime/channels";
 
@@ -21,6 +21,28 @@ export async function GET(
   const [room] = await db.select().from(rooms).where(eq(rooms.code, upperCode));
   if (!room) {
     return NextResponse.json({ error: "room not found" }, { status: 404 });
+  }
+
+  // One-time-use guard for the host QR.
+  if (pid === room.hostPlayerId) {
+    if (room.hostPhoneConnectedAt != null) {
+      return NextResponse.json(
+        { error: "This host QR has already been used. Ask the host to show you the player join code instead." },
+        { status: 409 }
+      );
+    }
+    // Race-safe claim: only succeeds if still unclaimed.
+    const claimed = await db
+      .update(rooms)
+      .set({ hostPhoneConnectedAt: new Date() })
+      .where(and(eq(rooms.code, upperCode), isNull(rooms.hostPhoneConnectedAt)))
+      .returning({ id: rooms.id });
+    if (claimed.length === 0) {
+      return NextResponse.json(
+        { error: "This host QR has already been used. Ask the host to show you the player join code instead." },
+        { status: 409 }
+      );
+    }
   }
 
   // Look up player by id alone, then verify they belong to this room.
