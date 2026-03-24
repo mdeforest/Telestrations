@@ -45,10 +45,12 @@ function seededShuffle<T>(arr: T[], roundId: string): T[] {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
-  const out = [...arr];
+  const out: T[] = [...arr];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(next() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
   }
   return out;
 }
@@ -164,7 +166,7 @@ export function createPromptService(db: any) {
       .select({ id: prompts.id, text: prompts.text })
       .from(prompts);
 
-    const shuffled = seededShuffle(all, roundId);
+    const shuffled = seededShuffle<{ id: string; text: string }>(all, roundId);
     const offset = seatOrder * 3;
     const options = shuffled.slice(offset, offset + 3);
 

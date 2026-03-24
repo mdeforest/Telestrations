@@ -1,4 +1,3 @@
-import React from "react";
 
 interface Player {
   id: string;
@@ -10,9 +9,10 @@ interface Props {
   players: Player[];
   localPlayerId: string;
   phase: "drawing" | "guess";
+  submittedPlayerIds?: string[];
 }
 
-export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
+export function PlayerWaitingScreen({ players, localPlayerId, phase, submittedPlayerIds }: Props) {
   return (
     <main className="flex-grow container mx-auto px-4 py-8 max-w-4xl z-40 relative">
       {/* Status Header */}
@@ -51,6 +51,7 @@ export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
               {players.map((p, i) => {
                 // Determine styling based on whether it's the local player (assumed done) or others (assumed doodling)
                 const isMe = p.id === localPlayerId;
+                const isDone = isMe || (submittedPlayerIds?.includes(p.id) ?? false);
                 const isFirstColor = i % 2 === 0;
 
                 if (isMe) {
@@ -70,19 +71,26 @@ export function PlayerWaitingScreen({ players, localPlayerId, phase }: Props) {
                   );
                 }
 
-                // Others (Assuming still working)
+                // Others — show done or working based on submittedPlayerIds
                 return (
-                  <div key={p.id} className="flex items-center justify-between p-4 bg-surface-container-high rounded-xl border border-outline-variant/5 shadow-inner">
+                  <div key={p.id} className={`flex items-center justify-between p-4 rounded-xl border ${isDone ? "bg-surface-container-low border-outline-variant/5" : "bg-surface-container-high border-outline-variant/5 shadow-inner"}`}>
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center border-2 border-tertiary">
                         <span className="material-symbols-outlined text-tertiary-dim">face_3</span>
                       </div>
                       <span className="font-headline font-bold text-lg">{p.nickname}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-on-surface-variant italic opacity-80">
-                      <span className="font-label text-xs uppercase tracking-widest hidden sm:inline">Working...</span>
-                      <span className="material-symbols-outlined text-sm animate-bounce">edit</span>
-                    </div>
+                    {isDone ? (
+                      <div className="flex items-center gap-2 text-primary font-bold">
+                        <span className="font-label text-xs uppercase tracking-widest hidden sm:inline">Done!</span>
+                        <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-on-surface-variant italic opacity-80">
+                        <span className="font-label text-xs uppercase tracking-widest hidden sm:inline">Working...</span>
+                        <span className="material-symbols-outlined text-sm animate-bounce">edit</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

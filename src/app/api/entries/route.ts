@@ -52,16 +52,26 @@ export async function POST(req: NextRequest) {
 
   // Resolve scoringMode via book → round → room (needed for fuzzy scoring in competitive mode)
   const [scoringInfo] = await db
-    .select({ scoringMode: rooms.scoringMode })
+    .select({ scoringMode: rooms.scoringMode, roomCode: rooms.code })
     .from(books)
     .innerJoin(rounds, eq(books.roundId, rounds.id))
     .innerJoin(rooms, eq(rounds.roomId, rooms.id))
     .where(eq(books.id, bookId));
 
   const scoringMode = scoringInfo?.scoringMode;
+  const roomCode = scoringInfo?.roomCode;
 
   try {
     const result = await service.submitEntry(bookId, passNumber, playerId, content, scoringMode);
+
+    // Notify all clients of each individual submission so host/player screens
+    // can update pending-submission status in real time without waiting for
+    // the full pass to complete.
+    if (roomCode && !result.allSubmitted) {
+      await getAblyRest()
+        .channels.get(channels.roundPass(roomCode))
+        .publish("entry-submitted", { playerId });
+    }
 
     if (result.allSubmitted) {
       // Look up the room so we can publish Ably events

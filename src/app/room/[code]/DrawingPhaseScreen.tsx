@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import type { Message as AblyMessage } from "ably";
 import { getAblyClient } from "@/lib/realtime/client";
 import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
@@ -32,6 +33,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submittedPlayerIds, setSubmittedPlayerIds] = useState<string[]>([]);
   // bookId, passNumber, and the word to draw are loaded from the my-entry endpoint
   const [entryInfo, setEntryInfo] = useState<{
     bookId: string;
@@ -69,24 +71,25 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
       .catch(() => {/* non-fatal — submit button stays disabled */});
   }, [roundId]);
 
-  // Subscribe to pass-advanced so we know when the round moves on
-  useEffect(() => {
-    const ably = getAblyClient();
-    const ch = ably.channels.get(channels.roundPass(code));
-    ch.subscribe("pass-advanced", () => {
-      // Reload to pick up the new pass state from the server
-      window.location.reload();
-    });
-    return () => ch.unsubscribe();
-  }, [code]);
-
-  // Enter Ably presence so the host screen can detect disconnects
+  // Enter Ably presence so the host screen can detect disconnects,
+  // and subscribe to entry-submitted so the waiting screen can show who's done.
   useEffect(() => {
     const ably = getAblyClient();
     const presenceCh = ably.channels.get(channels.roomPlayers(code));
     presenceCh.presence.enter({ playerId });
+
+    const passCh = ably.channels.get(channels.roundPass(code));
+    const onEntrySubmitted = (msg: AblyMessage) => {
+      const { playerId: submittedId } = msg.data as { playerId: string };
+      setSubmittedPlayerIds((prev) =>
+        prev.includes(submittedId) ? prev : [...prev, submittedId]
+      );
+    };
+    passCh.subscribe("entry-submitted", onEntrySubmitted);
+
     return () => {
       presenceCh.presence.leave();
+      passCh.unsubscribe("entry-submitted", onEntrySubmitted);
     };
   }, [code, playerId]);
 
@@ -127,7 +130,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
   const timerUrgent = secondsLeft <= 10;
 
   if (submitted) {
-    return <PlayerWaitingScreen players={players} localPlayerId={playerId} phase="drawing" />;
+    return <PlayerWaitingScreen players={players} localPlayerId={playerId} phase="drawing" submittedPlayerIds={submittedPlayerIds} />;
   }
 
   return (

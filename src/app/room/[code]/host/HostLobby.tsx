@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Ably from "ably";
 import { QRCodeSVG } from "qrcode.react";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
@@ -67,17 +68,16 @@ export function HostLobby({
     const ably = getAblyClient();
 
     const playersCh = ably.channels.get(channels.roomPlayers(code));
-    playersCh.subscribe("players-updated", (msg) => {
+    const onPlayersUpdated = (msg: Ably.Message) => {
       const { players } = msg.data as { players: Player[]; hostPlayerId: string };
       setPlayerList(players);
-    });
-
-    playersCh.subscribe("host-phone-connected", () => {
-      setPhoneConnected(true);
-    });
+    };
+    const onPhoneConnected = () => { setPhoneConnected(true); };
+    playersCh.subscribe("players-updated", onPlayersUpdated);
+    playersCh.subscribe("host-phone-connected", onPhoneConnected);
 
     const statusCh = ably.channels.get(channels.roomStatus(code));
-    statusCh.subscribe("room-status-changed", (msg) => {
+    const onStatusChanged = (msg: Ably.Message) => {
       const { status: newStatus, roundId: newRoundId, timerStartedAt: newTimer } = msg.data as {
         status: string;
         roundId?: string;
@@ -86,10 +86,11 @@ export function HostLobby({
       setStatus(newStatus);
       if (newRoundId) setRoundId(newRoundId);
       if (newTimer !== undefined) setTimerStartedAt(newTimer);
-    });
+    };
+    statusCh.subscribe("room-status-changed", onStatusChanged);
 
     const revealCh = ably.channels.get(channels.revealAdvance(code));
-    revealCh.subscribe("reveal:advance", (msg) => {
+    const onRevealAdvance = (msg: Ably.Message) => {
       const { revealBookIndex: bIdx, revealEntryIndex: eIdx } = msg.data as {
         revealBookIndex: number;
         revealEntryIndex: number;
@@ -97,12 +98,14 @@ export function HostLobby({
       };
       setRevealBookIndex(bIdx);
       setRevealEntryIndex(eIdx);
-    });
+    };
+    revealCh.subscribe("reveal:advance", onRevealAdvance);
 
     return () => {
-      playersCh.unsubscribe();
-      statusCh.unsubscribe();
-      revealCh.unsubscribe();
+      playersCh.unsubscribe("players-updated", onPlayersUpdated);
+      playersCh.unsubscribe("host-phone-connected", onPhoneConnected);
+      statusCh.unsubscribe("room-status-changed", onStatusChanged);
+      revealCh.unsubscribe("reveal:advance", onRevealAdvance);
     };
   }, [code]);
 

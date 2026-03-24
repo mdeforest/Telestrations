@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import type { Message as AblyMessage } from "ably";
 import { getAblyClient } from "@/lib/realtime/client";
 import { debugFetch } from "@/lib/debug/debug-fetch";
 import { channels } from "@/lib/realtime/channels";
@@ -41,6 +42,7 @@ export function GuessingPhaseScreen({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guess, setGuess] = useState("");
+  const [submittedPlayerIds, setSubmittedPlayerIds] = useState<string[]>([]);
   const [entryInfo, setEntryInfo] = useState<{
     bookId: string;
     passNumber: number;
@@ -83,23 +85,24 @@ export function GuessingPhaseScreen({
       .catch(() => {/* non-fatal */});
   }, [roundId]);
 
-  // Subscribe to pass-advanced / room-status-changed to reload when round moves
-  useEffect(() => {
-    const ably = getAblyClient();
-    const ch = ably.channels.get(channels.roundPass(code));
-    ch.subscribe("pass-advanced", () => {
-      window.location.reload();
-    });
-    return () => ch.unsubscribe();
-  }, [code]);
-
-  // Enter Ably presence
+  // Enter Ably presence and subscribe to entry-submitted for waiting-screen updates
   useEffect(() => {
     const ably = getAblyClient();
     const presenceCh = ably.channels.get(channels.roomPlayers(code));
     presenceCh.presence.enter({ playerId });
+
+    const passCh = ably.channels.get(channels.roundPass(code));
+    const onEntrySubmitted = (msg: AblyMessage) => {
+      const { playerId: submittedId } = msg.data as { playerId: string };
+      setSubmittedPlayerIds((prev) =>
+        prev.includes(submittedId) ? prev : [...prev, submittedId]
+      );
+    };
+    passCh.subscribe("entry-submitted", onEntrySubmitted);
+
     return () => {
       presenceCh.presence.leave();
+      passCh.unsubscribe("entry-submitted", onEntrySubmitted);
     };
   }, [code, playerId]);
 
@@ -141,7 +144,7 @@ export function GuessingPhaseScreen({
   const timerUrgent = secondsLeft <= 10;
 
   if (submitted) {
-    return <GuessingWaitingScreen players={players} localPlayerId={playerId} />;
+    return <GuessingWaitingScreen players={players} localPlayerId={playerId} submittedPlayerIds={submittedPlayerIds} />;
   }
 
   return (
