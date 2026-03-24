@@ -62,10 +62,12 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
 
     const ably = getAblyClient();
 
-    // Refresh pending list when a pass advances
+    // Refresh pending list when any entry is submitted or a pass advances
     const passCh = ably.channels.get(channels.roundPass(code));
     const onPassAdvanced = () => { fetchStatus(); };
+    const onEntrySubmitted = () => { fetchStatus(); };
     passCh.subscribe("pass-advanced", onPassAdvanced);
+    passCh.subscribe("entry-submitted", onEntrySubmitted);
 
     // Update disconnected list when a player's connection status changes
     const playersCh = ably.channels.get(channels.roomPlayers(code));
@@ -89,6 +91,7 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
     return () => {
       cancelled = true;
       passCh.unsubscribe("pass-advanced", onPassAdvanced);
+      passCh.unsubscribe("entry-submitted", onEntrySubmitted);
       playersCh.unsubscribe("player-connection-changed", onConnectionChanged);
       playersCh.presence.unsubscribe(onPresenceChange);
     };

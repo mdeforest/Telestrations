@@ -9,9 +9,10 @@ interface Player {
 interface Props {
   players: Player[];
   localPlayerId: string;
+  submittedPlayerIds?: string[];
 }
 
-export function GuessingWaitingScreen({ players, localPlayerId }: Props) {
+export function GuessingWaitingScreen({ players, localPlayerId, submittedPlayerIds }: Props) {
   return (
     <main className="flex-1 px-6 pt-8 pb-32 max-w-md mx-auto w-full space-y-8 z-40 relative">
       {/* Confirmation Header */}
@@ -29,6 +30,7 @@ export function GuessingWaitingScreen({ players, localPlayerId }: Props) {
         <div className="space-y-3">
           {players.map((p) => {
             const isMe = p.id === localPlayerId;
+            const isDone = isMe || (submittedPlayerIds?.includes(p.id) ?? false);
             const initials = p.nickname.slice(0, 2).toUpperCase();
 
             if (isMe) {
@@ -47,18 +49,23 @@ export function GuessingWaitingScreen({ players, localPlayerId }: Props) {
               );
             }
 
-            // Others (Assuming still working)
             return (
-              <div key={p.id} className="flex items-center justify-between bg-surface-container-high p-3 rounded-xl border border-outline-variant/5 shadow-inner">
+              <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border ${isDone ? "bg-surface-container-low border-outline-variant/5" : "bg-surface-container-high border-outline-variant/5 shadow-inner"}`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-tertiary-fixed-dim rounded-full flex items-center justify-center text-on-tertiary-fixed font-headline font-bold">
                     {initials}
                   </div>
                   <span className="font-body font-semibold text-on-surface">{p.nickname}</span>
                 </div>
-                <span className="font-label text-xs font-bold text-on-surface-variant italic animate-pulse uppercase tracking-wider">
-                  Thinking...
-                </span>
+                {isDone ? (
+                  <span className="font-label text-xs font-bold text-primary tracking-widest uppercase">
+                    Done!
+                  </span>
+                ) : (
+                  <span className="font-label text-xs font-bold text-on-surface-variant italic animate-pulse uppercase tracking-wider">
+                    Thinking...
+                  </span>
+                )}
               </div>
             );
           })}

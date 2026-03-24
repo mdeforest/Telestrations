@@ -20,7 +20,7 @@
     box-shadow: 4px 4px 0px 0px var(--tw-color-secondary-dim, #00528b);
 }
 .sketch-shadow-tertiary {
-    box-shadow: 4px 4px 0px 0px var(--tw-color-tertiary-dim, #5f4e00);
+    box-shadow: 4px 4px 0px 0px var(--tw-color-tertiary-dim, #fdd400);
 }
 .canvas-paper {
     background-image: 
