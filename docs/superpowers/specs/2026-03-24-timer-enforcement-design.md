@@ -36,7 +36,7 @@ Add `passType: "drawing" | "guess"` to the response. Implementation: query one e
 }
 ```
 
-No new DB queries beyond what already runs — we can fold the type lookup into the existing entry query.
+Implementation detail: query `entries.type` where `bookId IN (round's books)` AND `passNumber = round.currentPass` **without** filtering on `submittedAt` (any entry for the pass, submitted or not, has the correct type). The existing pending-entries query uses `isNull(submittedAt)` — the passType query must be separate or use a LIMIT 1 on all entries for the pass. Fallback to `"drawing"` only when zero entries of any submission state exist for the current pass.
 
 ---
 
@@ -45,8 +45,18 @@ No new DB queries beyond what already runs — we can fold the type lookup into 
 ### DrawingCanvas
 
 Add optional prop `triggerAutoSubmit?: boolean`. In a `useEffect` that depends on `triggerAutoSubmit`:
-- When it becomes `true`, call `onSubmit(strokes)` immediately (submits whatever strokes are committed; empty array if player never drew)
-- Set internal `disabled` state to prevent double-submit
+- When it becomes `true`, call `onSubmit(strokes)` — submits whatever strokes are committed (empty array if player never drew)
+- Use a `useRef` flag (`autoSubmitted`) in addition to the `disabled` state to guard against double-submit. State resets on remount (e.g. React strict mode double-invoke); the ref persists and ensures the effect body runs at most once per component lifetime:
+
+```ts
+const autoSubmitted = useRef(false);
+// inside the useEffect:
+if (!triggerAutoSubmit || autoSubmitted.current) return;
+autoSubmitted.current = true;
+onSubmit(strokes);
+```
+
+**Mid-stroke behavior:** If the player's finger is still on the canvas at t=0, the in-progress stroke lives in `currentStroke` (a ref) and has not yet been committed to the `strokes` state array. That partial stroke is discarded — only committed strokes are submitted. This is acceptable given the rarity of the exact-millisecond edge case.
 
 **Interface change:**
 ```ts
@@ -98,13 +108,14 @@ The input and submit button remain functional — players can still submit after
 ### Timer fix
 Change `ROUND_DURATION_SECONDS` from 60 → 120 to match player screens.
 
-Also reset `timerStartedAt` on `pass-advanced` (same fix applied to `LobbyPlayerList` previously):
+Also reset `timerStartedAt` on `pass-advanced` (same fix applied to `LobbyPlayerList` previously). `HostDrawingScreen` stores `timerStartedAt` inside the `status` object, so update it via `setStatus`:
 ```ts
 const onPassAdvanced = () => {
-  setTimerStartedAt(new Date().toISOString());
+  setStatus(prev => ({ ...prev, timerStartedAt: new Date().toISOString() }));
   fetchStatus();
 };
 ```
+The optimistic `setStatus` fires immediately so the countdown resets without waiting for the network round-trip; `fetchStatus()` then overwrites with the authoritative server value.
 
 ### DrawingStatus type update
 ```ts

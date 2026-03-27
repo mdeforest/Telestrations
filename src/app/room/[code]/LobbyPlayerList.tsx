@@ -129,6 +129,7 @@ export function LobbyPlayerList({
       setPassType(null);
       setIncomingDrawing(null);
       setPassVersion((v) => v + 1);
+      setTimerStartedAt(new Date().toISOString());
     };
     passCh.subscribe("pass-advanced", onPassAdvanced);
 
