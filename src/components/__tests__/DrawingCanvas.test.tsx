@@ -9,6 +9,13 @@ describe("DrawingCanvas", () => {
   beforeEach(() => {
     // jsdom doesn't implement canvas getContext — suppress the expected warning
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // jsdom returns zero dimensions for canvas; mock realistic values so
+    // scale factors (canvas.width / rect.width) resolve to 1 instead of Infinity
+    HTMLCanvasElement.prototype.getBoundingClientRect = vi.fn(() => ({
+      left: 0, top: 0, width: 800, height: 600,
+      right: 800, bottom: 600, x: 0, y: 0,
+      toJSON: () => ({}),
+    }));
   });
 
   afterEach(() => {
@@ -55,10 +62,8 @@ describe("DrawingCanvas", () => {
     const onSubmit = vi.fn();
     render(<DrawingCanvas onSubmit={onSubmit} />);
     const canvas = document.querySelector("canvas")!;
-    const brushInput = screen.getByRole("slider");
 
-    // Change brush size to 12
-    fireEvent.change(brushInput, { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: /large brush/i }));
 
     fireEvent.mouseDown(canvas, { clientX: 5, clientY: 5 });
     fireEvent.mouseMove(canvas, { clientX: 10, clientY: 10 });
@@ -67,7 +72,7 @@ describe("DrawingCanvas", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
 
     const [strokes] = onSubmit.mock.calls[0];
-    expect(strokes[0].brushSize).toBe(12);
+    expect(strokes[0].brushSize).toBe(10);
   });
 
   it("accumulates multiple separate strokes from multiple mouse sequences", () => {
@@ -139,7 +144,7 @@ describe("DrawingCanvas", () => {
 
   it("hides the brush slider and submit button when readOnly is true", () => {
     render(<DrawingCanvas onSubmit={vi.fn()} readOnly />);
-    expect(screen.queryByRole("slider")).toBeNull();
+    expect(screen.queryByRole("button", { name: /brush/i })).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
   });
 
@@ -165,5 +170,37 @@ describe("DrawingCanvas", () => {
     // When in replay/display mode the component should pass back the replay strokes
     const [strokes] = onSubmit.mock.calls[0];
     expect(strokes).toEqual(replay);
+  });
+
+  it("calls onSubmit with empty strokes when triggerAutoSubmit becomes true with no drawing", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={false} />);
+    expect(onSubmit).not.toHaveBeenCalled();
+    rerender(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={true} />);
+    expect(onSubmit).toHaveBeenCalledWith([]);
+  });
+
+  it("calls onSubmit with committed strokes when triggerAutoSubmit becomes true", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={false} />);
+    const canvas = document.querySelector("canvas")!;
+
+    fireEvent.mouseDown(canvas, { clientX: 10, clientY: 20 });
+    fireEvent.mouseMove(canvas, { clientX: 30, clientY: 40 });
+    fireEvent.mouseUp(canvas);
+
+    rerender(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={true} />);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const [strokes] = onSubmit.mock.calls[0];
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0].points).toEqual([{ x: 10, y: 20 }, { x: 30, y: 40 }]);
+  });
+
+  it("does not call onSubmit a second time when triggerAutoSubmit stays true across re-renders", () => {
+    const onSubmit = vi.fn();
+    const { rerender } = render(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={true} />);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    rerender(<DrawingCanvas onSubmit={onSubmit} triggerAutoSubmit={true} />);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

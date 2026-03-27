@@ -11,14 +11,24 @@ interface DrawingCanvasProps {
   disabled?: boolean;
   /** When true, hides brush controls and submit button — canvas is view-only. */
   readOnly?: boolean;
+  /** When flipped true, fires onSubmit(strokes) once — used for timer expiry auto-submit. */
+  triggerAutoSubmit?: boolean;
 }
 
-export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: DrawingCanvasProps) {
+export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly, triggerAutoSubmit }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>(replayStrokes ?? []);
   const currentStroke = useRef<Point[]>([]);
   const isDrawing = useRef(false);
   const [brushSize, setBrushSize] = useState(4);
+  const autoSubmitted = useRef(false);
+  // Keep a ref to the latest committed strokes so the auto-submit effect does not
+  // need `strokes` in its dependency array (which would re-fire on every new stroke).
+  const strokesRef = useRef(strokes);
+  useEffect(() => { strokesRef.current = strokes; }, [strokes]);
+
+  const onSubmitRef = useRef(onSubmit);
+  useEffect(() => { onSubmitRef.current = onSubmit; }, [onSubmit]);
 
   function getPos(
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -83,6 +93,17 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
     onSubmit(strokes);
   }
 
+  // Auto-submit when the timer expires (triggerAutoSubmit prop flips true).
+  // The autoSubmitted ref ensures this fires at most once per component lifetime,
+  // even if the component re-renders with triggerAutoSubmit=true still set.
+  // strokesRef.current captures the latest committed strokes without adding
+  // `strokes` to the dependency array (which would re-fire on every stroke added).
+  useEffect(() => {
+    if (!triggerAutoSubmit || autoSubmitted.current) return;
+    autoSubmitted.current = true;
+    onSubmitRef.current(strokesRef.current);
+  }, [triggerAutoSubmit]);
+
   // Draw replay strokes onto the canvas when the component mounts with pre-existing data
   useEffect(() => {
     if (!replayStrokes || replayStrokes.length === 0) return;
@@ -108,7 +129,6 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
   // Helper to adjust brush size to standard steps on slider
   const handleBrushChange = (size: number) => {
     setBrushSize(size);
-    // Focus logic would go here if needed
   };
 
   return (
@@ -151,13 +171,13 @@ export function DrawingCanvas({ onSubmit, replayStrokes, disabled, readOnly }: D
             </div>
             {/* Brush Sizes */}
             <div className="flex items-center gap-4">
-              <button onClick={() => handleBrushChange(2)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize <= 2 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+              <button aria-label="small brush" onClick={() => handleBrushChange(2)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize <= 2 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
                 <div className="w-2 h-2 bg-current rounded-full"></div>
               </button>
-              <button onClick={() => handleBrushChange(5)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 2 && brushSize <= 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+              <button aria-label="medium brush" onClick={() => handleBrushChange(5)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 2 && brushSize <= 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
                 <div className="w-4 h-4 bg-current rounded-full"></div>
               </button>
-              <button onClick={() => handleBrushChange(10)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
+              <button aria-label="large brush" onClick={() => handleBrushChange(10)} className={`flex items-center justify-center w-8 h-8 transition-colors ${brushSize > 6 ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}>
                 <div className="w-6 h-6 bg-current rounded-full"></div>
               </button>
             </div>
