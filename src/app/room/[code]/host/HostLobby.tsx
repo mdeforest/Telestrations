@@ -142,7 +142,7 @@ export function HostLobby({
   }
 
   return (
-    <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
+    <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-64 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
       {/* Left: QR Code Panel */}
       <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
         {/* Zone 1 — Player join QR (prominent) */}
@@ -205,7 +205,7 @@ export function HostLobby({
             // Varied tilt/rotation for players to match living doodle
             const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
             const bgRound = index % 3 === 0 ? "bg-secondary-container text-on-secondary-container sketch-shadow-secondary border border-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container border border-primary sketch-shadow-primary" : "bg-tertiary-container text-on-tertiary-container border border-tertiary sketch-shadow";
-            const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
+            const cardBg = "bg-surface-container-lowest";
 
             return (
               <div key={p.id} className={`${cardBg} p-6 col-span-1 rounded-xl flex flex-col items-center gap-3 ${rotation} relative shadow-sm border border-outline-variant/10 transition-transform hover:scale-105 min-h-[160px] justify-center`}>
