@@ -33,6 +33,10 @@ describe("DrawingPhaseScreen", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("auto-submits when the timer reaches zero", async () => {
     const fetchMock = vi.fn()
       // my-entry fetch returns entryInfo so the submit can proceed
@@ -47,9 +51,9 @@ describe("DrawingPhaseScreen", () => {
       });
     vi.stubGlobal("fetch", fetchMock);
 
-    // timerStartedAt set to exactly 120 seconds ago so the synchronous tick() call
+    // timerStartedAt set to 121 seconds ago (1s of headroom) so the synchronous tick()
     // on mount computes remaining=0 and sets autoSubmit=true immediately.
-    const timerStartedAt = new Date(Date.now() - 120_000).toISOString();
+    const timerStartedAt = new Date(Date.now() - 121_000).toISOString();
     renderDrawing({ timerStartedAt });
 
     // Wait for the my-entry fetch promise chain to resolve and set entryInfo.
@@ -60,6 +64,7 @@ describe("DrawingPhaseScreen", () => {
       expect(screen.getByText(/you're all set/i)).toBeTruthy();
     });
 
-    vi.unstubAllGlobals();
+    // Verify both fetches were called: my-entry + POST /api/entries
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
