@@ -142,7 +142,7 @@ export function HostLobby({
   }
 
   return (
-    <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-64 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
+    <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-64 w-full max-w-[1400px] mx-auto bg-surface text-on-surface">
       {/* Left: QR Code Panel */}
       <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
         {/* Zone 1 — Player join QR (prominent) */}
