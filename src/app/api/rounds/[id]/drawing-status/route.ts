@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { books, entries, players, rounds } from "@/lib/db/schema";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 /**
  * GET /api/rounds/[id]/drawing-status
@@ -9,6 +9,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
  * Returns the current drawing-phase state for a round:
  * - timerStartedAt: ISO string or null
  * - currentPass: which pass is active
+ * - passType: "drawing" | "guess"
  * - pendingNicknames: players who haven't submitted for the current pass
  * - disconnectedNicknames: players currently marked as disconnected
  *
@@ -33,21 +34,25 @@ export async function GET(
 
   const bookIds = roundBooks.map((b) => b.id);
 
-  // Entries for current pass that haven't been submitted yet, scoped to this round's books
-  const pendingEntries = bookIds.length > 0
+  // Single query: fetch type + authorPlayerId + submittedAt for all entries in the current pass.
+  // Used to derive both passType (from the first row's type) and pendingPlayerIds (unsubmitted rows).
+  const passEntries = bookIds.length > 0
     ? await db
-        .select({ authorPlayerId: entries.authorPlayerId })
+        .select({ type: entries.type, authorPlayerId: entries.authorPlayerId, submittedAt: entries.submittedAt })
         .from(entries)
         .where(
           and(
             inArray(entries.bookId, bookIds),
-            eq(entries.passNumber, round.currentPass),
-            isNull(entries.submittedAt)
+            eq(entries.passNumber, round.currentPass)
           )
         )
     : [];
 
-  const pendingPlayerIds = new Set(pendingEntries.map((e) => e.authorPlayerId));
+  const passType: "drawing" | "guess" = passEntries[0]?.type ?? "drawing";
+
+  const pendingPlayerIds = new Set(
+    passEntries.filter((e) => e.submittedAt === null).map((e) => e.authorPlayerId)
+  );
 
   // Load all players in the room to get nicknames + disconnected status
   const allPlayers = await db
@@ -66,6 +71,7 @@ export async function GET(
   return NextResponse.json({
     timerStartedAt: round.timerStartedAt?.toISOString() ?? null,
     currentPass: round.currentPass,
+    passType,
     pendingNicknames,
     disconnectedNicknames,
   });
