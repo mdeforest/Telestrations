@@ -144,7 +144,7 @@ export function HostLobby({
   return (
     <main className="flex-grow flex flex-col lg:flex-row p-6 lg:p-12 gap-8 lg:gap-12 pb-40 overflow-y-auto w-full max-w-[1400px] mx-auto min-h-screen bg-surface text-on-surface">
       {/* Left: QR Code Panel */}
-      <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0 lg:h-[calc(100vh-7rem-110px)]">
+      <section className="w-full lg:w-1/3 flex flex-col gap-6 shrink-0">
         {/* Zone 1 — Player join QR (prominent) */}
         <div className="bg-surface-container-lowest rounded-xl p-6 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 relative">
           {urlInfo.playerJoinUrl ? (
@@ -170,7 +170,7 @@ export function HostLobby({
         {/* Zone 3 — Host QR (blurred/hidden) */}
         {!phoneConnected ? (
           <div
-            className="bg-surface-container-lowest rounded-xl p-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-outline-variant/30 cursor-pointer flex-grow"
+            className="bg-surface-container-lowest rounded-xl p-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-outline-variant/30 cursor-pointer"
             onMouseEnter={(e) => (e.currentTarget.querySelector<HTMLDivElement>(".host-qr-inner")!.style.filter = "none")}
             onMouseLeave={(e) => (e.currentTarget.querySelector<HTMLDivElement>(".host-qr-inner")!.style.filter = "blur(8px)")}
           >
@@ -204,7 +204,7 @@ export function HostLobby({
 
             // Varied tilt/rotation for players to match living doodle
             const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
-            const bgRound = index % 3 === 0 ? "bg-secondary text-on-secondary sketch-shadow-secondary border border-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container border border-primary sketch-shadow-primary" : "bg-tertiary-container text-on-tertiary-container border border-tertiary sketch-shadow";
+            const bgRound = index % 3 === 0 ? "bg-secondary-container text-on-secondary-container sketch-shadow-secondary border border-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container border border-primary sketch-shadow-primary" : "bg-tertiary-container text-on-tertiary-container border border-tertiary sketch-shadow";
             const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
 
             return (
