@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Ably client used inside the component
 vi.mock("@/lib/realtime/client", () => ({
@@ -39,6 +39,11 @@ describe("GuessingPhaseScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => {}); // suppress canvas jsdom warning
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("renders a canvas replay of the incoming drawing", () => {
@@ -89,7 +94,7 @@ describe("GuessingPhaseScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: /submit guess/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/waiting for others/i)).toBeTruthy();
+      expect(screen.getByText(/nice guess/i)).toBeTruthy();
     });
 
     vi.unstubAllGlobals();
@@ -138,7 +143,7 @@ describe("GuessingPhaseScreen", () => {
     renderGuessing();
 
     await waitFor(() => {
-      expect(screen.getByText(/waiting for others/i)).toBeTruthy();
+      expect(screen.getByText(/nice guess/i)).toBeTruthy();
     });
 
     vi.unstubAllGlobals();
@@ -149,5 +154,22 @@ describe("GuessingPhaseScreen", () => {
     renderGuessing({ timerStartedAt });
     // Should show something like 0:55
     expect(screen.getByLabelText(/seconds remaining/i)).toBeTruthy();
+  });
+
+  it("shows an urgency banner when the timer reaches zero and player has not submitted", async () => {
+    // timerStartedAt 121s ago so remaining=0 on first synchronous tick
+    const timerStartedAt = new Date(Date.now() - 121_000).toISOString();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ alreadySubmitted: false }),
+    }));
+    vi.useFakeTimers();
+    renderGuessing({ timerStartedAt });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1100);
+    });
+
+    expect(screen.getByText(/time's up/i)).toBeTruthy();
   });
 });
