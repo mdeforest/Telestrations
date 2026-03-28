@@ -60,13 +60,15 @@ describe("POST /api/debug/session", () => {
     mocks.createSession.mockResolvedValue({
       id: "sess-1",
       roomCode: "ABCDE",
+      numRounds: 6,
       players: [{ playerId: "p1", nickname: "Player 1", seatOrder: 0, isHost: true }],
     });
-    const res = await POST(makeReq({ playerCount: 4 }));
+    const res = await POST(makeReq({ playerCount: 4, numRounds: 6 }));
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.sessionId).toBe("sess-1");
     expect(data.roomCode).toBe("ABCDE");
     expect(data.players).toHaveLength(1);
+    expect(mocks.createSession).toHaveBeenCalledWith(4, 6);
   });
 });

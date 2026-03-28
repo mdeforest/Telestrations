@@ -206,18 +206,40 @@ describe("startGame", () => {
     ).rejects.toThrow(InsufficientPlayersError);
   });
 
-  it("throws InvalidConfigError when numRounds is outside 3–8", async () => {
+  it("throws InvalidConfigError when numRounds is outside 1–8", async () => {
     const db = makeDb();
     // select never reached — validation fires first
     db.select = vi.fn();
 
     const service = createRoomService(db as never);
     await expect(
-      service.startGame("ABCDEF", "player-1", { numRounds: 2, scoringMode: "friendly" })
+      service.startGame("ABCDEF", "player-1", { numRounds: 0, scoringMode: "friendly" })
     ).rejects.toThrow(InvalidConfigError);
     await expect(
       service.startGame("ABCDEF", "player-1", { numRounds: 9, scoringMode: "friendly" })
     ).rejects.toThrow(InvalidConfigError);
+  });
+
+  it("allows starting a one-round game", async () => {
+    const { insert, insertCalls } = makeTrackingInsertMock();
+    const db = makeDb();
+    db.insert = insert;
+    db.select = makeSelectForStartGame(4);
+    db.update = makeUpdateReturningMock({
+      id: "room-1", code: "ABCDEF", status: "prompts", numRounds: 1, scoringMode: "friendly",
+    });
+
+    const service = createRoomService(db as never);
+    const result = await service.startGame("ABCDEF", "player-1", {
+      numRounds: 1,
+      scoringMode: "friendly",
+    });
+
+    expect(result.status).toBe("prompts");
+    expect(insertCalls).toHaveLength(3);
+    expect(insertCalls[0].values).toHaveLength(1);
+    expect(insertCalls[1].values).toHaveLength(4);
+    expect(insertCalls[2].values).toHaveLength(16);
   });
 
   it("persists numRounds and scoringMode to the database", async () => {

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { rooms, players, books, rounds } from "@/lib/db/schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { HostLobby } from "./HostLobby";
+import { createDebugService } from "@/lib/debug/debug-service";
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -25,6 +26,14 @@ export default async function HostLobbyPage({ params }: Props) {
   let initialSelectedCount = 0;
   let initialRoundId: string | undefined;
   let initialTimerStartedAt: string | null = null;
+  let initialNumRounds = room.numRounds;
+
+  if (room.status === "lobby" && process.env.NODE_ENV !== "production") {
+    const debugSession = createDebugService(db).getSessionByRoomCode(upperCode);
+    if (debugSession) {
+      initialNumRounds = debugSession.numRounds;
+    }
+  }
 
   if (room.status === "prompts" || room.status === "active") {
     const [currentRound] = await db
@@ -51,6 +60,7 @@ export default async function HostLobbyPage({ params }: Props) {
       code={upperCode}
       initialPlayers={playerList}
       hostPlayerId={room.hostPlayerId ?? ""}
+      initialNumRounds={initialNumRounds}
       initialStatus={room.status}
       initialSelectedCount={initialSelectedCount}
       initialRoundId={initialRoundId}

@@ -6,6 +6,16 @@ import {
   type DebugSession,
 } from "../debug-service";
 
+vi.mock("@/lib/realtime/server", () => ({
+  getAblyRest: () => ({
+    channels: {
+      get: () => ({
+        publish: vi.fn().mockResolvedValue(undefined),
+      }),
+    },
+  }),
+}));
+
 // ── Mock helpers ─────────────────────────────────────────────────────────────
 
 function makeSelectSequence(responses: unknown[]) {
@@ -41,6 +51,7 @@ const BASE_SESSION: DebugSession = {
   id: "sess-1",
   roomCode: "ABCDE",
   roomId: "room-1",
+  numRounds: 3,
   players: [
     { playerId: "p1", nickname: "Player 1", seatOrder: 0, isHost: true },
     { playerId: "p2", nickname: "Player 2", seatOrder: 1, isHost: false },
@@ -73,6 +84,12 @@ describe("createSession", () => {
     const db = {} as unknown;
     const service = createDebugService(db);
     await expect(service.createSession(7)).rejects.toThrow(DebugInvalidConfigError);
+  });
+
+  it("throws DebugInvalidConfigError when numRounds is below 1", async () => {
+    const db = {} as unknown;
+    const service = createDebugService(db);
+    await expect(service.createSession(4, 0)).rejects.toThrow(DebugInvalidConfigError);
   });
 
   it("creates session with 4 players and stores it in the session map", async () => {
@@ -108,10 +125,37 @@ describe("createSession", () => {
     const session = await service.createSession(4);
 
     expect(session.roomCode).toBe("ABCDE");
+    expect(session.numRounds).toBe(3);
     expect(session.players).toHaveLength(4);
     expect(session.players[0].isHost).toBe(true);
     expect(session.players[1].isHost).toBe(false);
     expect(service.getSession(session.id)).toBe(session);
+  });
+
+  it("stores the configured numRounds in the session", async () => {
+    const db = {
+      insert: vi.fn()
+        .mockImplementationOnce(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: "room-id-1", code: "ABCDE" }]),
+          }),
+        }))
+        .mockImplementation(() => ({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: "player-id", seatOrder: 0 }]),
+          }),
+        })),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    } as unknown;
+
+    const service = createDebugService(db);
+    const session = await service.createSession(4, 6);
+
+    expect(session.numRounds).toBe(6);
   });
 });
 
@@ -122,9 +166,10 @@ describe("getSessionState", () => {
     const roomRow = { id: "room-1", code: "ABCDE", status: "lobby", currentRound: 0, numRounds: 3 };
     const db = { select: makeSelectSequence([[roomRow]]) } as unknown;
     const service = createDebugService(db);
-    seedSession(BASE_SESSION);
+    seedSession({ ...BASE_SESSION, numRounds: 6 });
     const state = await service.getSessionState("sess-1");
     expect(state.roomStatus).toBe("lobby");
+    expect(state.numRounds).toBe(6);
     expect(state.players[0].screen).toBe("Lobby");
   });
 
@@ -187,16 +232,16 @@ describe("performAction", () => {
     );
   });
 
-  it("start_game calls startGame with numRounds:3 scoringMode:friendly as host", async () => {
+  it("start_game calls startGame with configured numRounds and scoringMode:friendly as host", async () => {
     const startGame = vi.fn().mockResolvedValue({});
     const roomRow = { id: "room-1", status: "lobby", currentRound: 0, numRounds: 3 };
     const db = { select: makeSelectSequence([[roomRow]]) } as unknown;
     const service = createDebugService(db, {
       roomServiceFactory: () => ({ startGame }),
     });
-    seedSession({ ...BASE_SESSION, id: "sess-sg" });
+    seedSession({ ...BASE_SESSION, id: "sess-sg", numRounds: 5 });
     await service.performAction("sess-sg", "start_game");
-    expect(startGame).toHaveBeenCalledWith("ABCDE", "p1", { numRounds: 3, scoringMode: "friendly" });
+    expect(startGame).toHaveBeenCalledWith("ABCDE", "p1", { numRounds: 5, scoringMode: "friendly" });
   });
 
   it("start_game throws DebugInvalidActionError when room is not in lobby", async () => {

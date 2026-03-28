@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const playerCount = typeof body.playerCount === "number" ? body.playerCount : undefined;
+  const numRounds = typeof body.numRounds === "number" ? body.numRounds : undefined;
 
   if (playerCount === undefined) {
     return NextResponse.json({ error: "playerCount is required" }, { status: 400 });
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const service = createDebugService(db);
 
   try {
-    const session = await service.createSession(playerCount);
+    const session = await service.createSession(playerCount, numRounds);
     return NextResponse.json(
       { sessionId: session.id, roomCode: session.roomCode, players: session.players },
       { status: 201 }

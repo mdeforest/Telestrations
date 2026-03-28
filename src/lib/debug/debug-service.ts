@@ -45,6 +45,7 @@ export interface DebugSession {
   id: string;
   roomCode: string;
   roomId: string;
+  numRounds: number;
   players: DebugPlayer[];
   createdAt: Date;
 }
@@ -117,9 +118,12 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
 
   // ── createSession ──────────────────────────────────────────────────────────
 
-  async function createSession(playerCount: number): Promise<DebugSession> {
+  async function createSession(playerCount: number, numRounds = 3): Promise<DebugSession> {
     if (playerCount < 4 || playerCount > 6) {
       throw new DebugInvalidConfigError(`playerCount must be 4–6, got ${playerCount}`);
+    }
+    if (numRounds < 1 || numRounds > 8) {
+      throw new DebugInvalidConfigError(`numRounds must be 1–8, got ${numRounds}`);
     }
 
     const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -160,12 +164,17 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
       id: randomUUID(),
       roomCode: room.code,
       roomId: room.id,
+      numRounds,
       players: createdPlayers,
       createdAt: new Date(),
     };
 
     sessions.set(session.id, session);
     return session;
+  }
+
+  function getSessionByRoomCode(roomCode: string): DebugSession | undefined {
+    return Array.from(sessions.values()).find((session) => session.roomCode === roomCode);
   }
 
   // ── getSessionState ────────────────────────────────────────────────────────
@@ -211,7 +220,7 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
       roomCode: session.roomCode,
       roomStatus: room.status,
       currentRound: room.currentRound,
-      numRounds: room.numRounds,
+      numRounds: room.status === "lobby" ? session.numRounds : room.numRounds,
       players: session.players.map((p) => ({
         playerId: p.playerId,
         nickname: p.nickname,
@@ -239,7 +248,7 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
           );
         }
         await roomSvc.startGame(session.roomCode, host.playerId, {
-          numRounds: 3,
+          numRounds: session.numRounds,
           scoringMode: "friendly",
         });
         const [firstRound] = await db
@@ -413,5 +422,5 @@ export function createDebugService(db: AnyDb, overrides?: ServiceOverrides) {
     }
   }
 
-  return { createSession, getSessionState, performAction, getSession };
+  return { createSession, getSessionState, performAction, getSession, getSessionByRoomCode };
 }
