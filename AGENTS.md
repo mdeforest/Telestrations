@@ -49,4 +49,5 @@ See `docs/decisions.md` for the full decision log. Key points:
 - Never commit to `main`
 - Commit format: `type(scope): short description`
 - Fix TypeScript/lint errors immediately, including pre-existing ones
+- Host-screen layouts should fit within the target viewport without requiring vertical scrolling; scale content to the available height instead of letting fixed/sticky chrome cover important UI such as QR codes or controls
 - Git worktrees go in `.worktrees/` (project-local, hidden)
