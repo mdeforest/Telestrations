@@ -260,7 +260,9 @@ export function HostLobby({
                 <div className="h-8 lg:h-10 w-px bg-outline-variant/30"></div>
                 <div className="flex flex-col items-center md:items-start">
                   <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scoring Mode</span>
-                  <span className="font-headline text-lg lg:text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
+                  <span className="font-headline text-lg lg:text-xl font-extrabold text-on-surface">
+                    {scoringMode === "friendly" ? "No Scoring" : "Competitive"}
+                  </span>
                 </div>
               </div>
               <span className="text-[10px] text-outline-variant mt-1 font-label">Set on host phone</span>

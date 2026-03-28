@@ -314,7 +314,7 @@ export function PlayerRevealScreen({
       {/* Header Info */}
       <section className="text-center space-y-2">
         <span className="font-label text-sm uppercase tracking-widest text-secondary font-bold">
-          {scoringMode === "friendly" ? "Friendly Mode" : "Competitive Mode"}
+          {scoringMode === "friendly" ? "No Scoring" : "Competitive"}
         </span>
         <h2 className="font-headline text-3xl font-extrabold text-on-surface">The Grand Reveal!</h2>
         <p className="text-on-surface-variant font-body font-medium">

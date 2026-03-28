@@ -306,7 +306,9 @@ export function LobbyPlayerList({
                   <div className="flex flex-col items-center md:items-start group cursor-pointer" onClick={() => setScoringMode(scoringMode === "friendly" ? "competitive" : "friendly")}>
                     <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scoring Mode</span>
                     <div className="flex items-center gap-2">
-                      <span className="font-headline text-xl font-extrabold text-on-surface capitalize">{scoringMode}</span>
+                      <span className="font-headline text-xl font-extrabold text-on-surface">
+                        {scoringMode === "friendly" ? "No Scoring" : "Competitive"}
+                      </span>
                       <span className="material-symbols-outlined text-secondary text-sm group-hover:rotate-180 transition-transform">swap_vert</span>
                     </div>
                   </div>
@@ -435,13 +437,13 @@ export function LobbyPlayerList({
                     <button
                       key={mode}
                       onClick={() => setScoringMode(mode)}
-                      className={`py-3 px-4 rounded-lg font-bold text-sm capitalize transition-all active:scale-95 ${
+                      className={`py-3 px-4 rounded-lg font-bold text-sm transition-all active:scale-95 ${
                         scoringMode === mode
                           ? "bg-surface-container-lowest text-secondary sketch-shadow-secondary border border-secondary"
                           : "text-outline-variant hover:bg-surface-container-high border border-transparent"
                       }`}
                     >
-                      {mode}
+                      {mode === "friendly" ? "No Scoring" : "Competitive"}
                     </button>
                   ))}
                 </div>
