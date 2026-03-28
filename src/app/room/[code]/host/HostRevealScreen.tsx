@@ -224,40 +224,47 @@ export function HostRevealScreen({ code, scoringMode, initialBookIndex, initialE
 
   // Game finished
   if (finished) {
-    if (scoringMode === "friendly") {
-      return (
-        <div className="min-h-screen bg-surface paper-texture flex flex-col items-center justify-center gap-8 px-8 py-16">
-          <div className="text-center">
-            <div className="w-28 h-28 bg-tertiary-container rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-tertiary sketch-shadow-tertiary">
-              <span className="text-5xl">🎉</span>
-            </div>
-            <h1 className="font-headline text-5xl font-black text-on-surface mb-3">Reveal Complete!</h1>
-            <p className="text-on-surface-variant text-lg font-medium">Tally player votes to crown the winner.</p>
-          </div>
-          <button
-            onClick={handleTally}
-            disabled={tallying}
-            className={`rounded-full px-12 py-5 font-headline font-bold text-xl flex items-center gap-3 transition-all ${
-              !tallying
-                ? "bg-tertiary text-on-tertiary hover:-translate-y-1 hover:shadow-xl active:scale-95 sketch-shadow-tertiary"
-                : "bg-surface-container-high text-outline-variant cursor-not-allowed opacity-70"
-            }`}
-          >
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{tallying ? "hourglass_empty" : "workspace_premium"}</span>
-            {tallying ? "Tallying..." : "Tally Votes & Show Leaderboard"}
-          </button>
-        </div>
-      );
-    }
     return (
       <div className="min-h-screen bg-surface paper-texture flex flex-col items-center justify-center gap-8 px-8 py-16">
         <div className="text-center">
-          <div className="w-28 h-28 bg-primary-container rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-primary sketch-shadow-primary">
-            <span className="text-5xl">🎨</span>
+          <div
+            className={`w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-6 border-4 ${
+              scoringMode === "friendly"
+                ? "bg-tertiary-container border-tertiary sketch-shadow-tertiary"
+                : "bg-primary-container border-primary sketch-shadow-primary"
+            }`}
+          >
+            <span className="text-5xl">{scoringMode === "friendly" ? "🎉" : "🏁"}</span>
           </div>
-          <h1 className="font-headline text-5xl font-black text-on-surface mb-3">Game Over!</h1>
-          <p className="text-on-surface-variant text-lg font-medium">Thanks for doodling!</p>
+          <h1 className="font-headline text-5xl font-black text-on-surface mb-3">
+            {scoringMode === "friendly" ? "Reveal Complete!" : "Game Over!"}
+          </h1>
+          <p className="text-on-surface-variant text-lg font-medium">
+            {scoringMode === "friendly"
+              ? "Tally player votes to crown the winner."
+              : "Calculate the final scores and show the leaderboard."}
+          </p>
         </div>
+        <button
+          onClick={handleTally}
+          disabled={tallying}
+          className={`rounded-full px-12 py-5 font-headline font-bold text-xl flex items-center gap-3 transition-all ${
+            !tallying
+              ? scoringMode === "friendly"
+                ? "bg-tertiary text-on-tertiary hover:-translate-y-1 hover:shadow-xl active:scale-95 sketch-shadow-tertiary"
+                : "bg-primary text-on-primary hover:-translate-y-1 hover:shadow-xl active:scale-95 sketch-shadow-primary"
+              : "bg-surface-container-high text-outline-variant cursor-not-allowed opacity-70"
+          }`}
+        >
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {tallying ? "hourglass_empty" : "workspace_premium"}
+          </span>
+          {tallying
+            ? "Tallying..."
+            : scoringMode === "friendly"
+            ? "Tally Votes & Show Leaderboard"
+            : "Show Final Scores"}
+        </button>
       </div>
     );
   }

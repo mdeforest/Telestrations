@@ -1,37 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { rooms } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import {
   createRevealService,
   RoomNotFoundError,
+  NotHostError,
   NotRevealPhaseError,
 } from "@/lib/game/reveal-service";
 import { getAblyRest } from "@/lib/realtime/server";
 import { channels } from "@/lib/realtime/channels";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
 
-  // Look up the host player ID from the room directly — the host TV view
-  // has no player session cookie, so we bypass cookie-based auth and use
-  // the room's recorded hostPlayerId instead.
-  const [room] = await db
-    .select({ hostPlayerId: rooms.hostPlayerId })
-    .from(rooms)
-    .where(eq(rooms.code, code.toUpperCase()));
-
-  if (!room?.hostPlayerId) {
-    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  const playerId = await getPlayerId();
+  if (!playerId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const service = createRevealService(db);
 
   try {
-    const result = await service.advanceReveal(code.toUpperCase(), room.hostPlayerId);
+    const result = await service.advanceReveal(code.toUpperCase(), playerId);
 
     await getAblyRest()
       .channels.get(channels.revealAdvance(code.toUpperCase()))
@@ -52,6 +45,9 @@ export async function POST(
   } catch (err) {
     if (err instanceof RoomNotFoundError) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    }
+    if (err instanceof NotHostError) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (err instanceof NotRevealPhaseError) {
       return NextResponse.json({ error: "Room is not in reveal phase" }, { status: 409 });

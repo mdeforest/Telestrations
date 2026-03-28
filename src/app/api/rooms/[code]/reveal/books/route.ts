@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rooms, players, books, rounds, entries } from "@/lib/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
+import { getPlayerId } from "@/lib/debug/get-player-id";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
+
+  const playerId = await getPlayerId();
+  if (!playerId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const [room] = await db
     .select()
