@@ -30,12 +30,6 @@ interface LeaderboardEntry {
   totalPoints: number | string | null;
 }
 
-// Per-book vote selections (before submission)
-interface BookVoteSelection {
-  sketchEntryId?: string;
-  guessEntryId?: string;
-}
-
 interface Props {
   code: string;
   playerId: string;
@@ -60,12 +54,7 @@ export function PlayerRevealScreen({
   const [advancing, setAdvancing] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Voting state
-  const [voteSelections, setVoteSelections] = useState<Record<string, BookVoteSelection>>({});
-  const [submittedBookIds, setSubmittedBookIds] = useState<Set<string>>(new Set());
-  const [submittingBookId, setSubmittingBookId] = useState<string | null>(null);
-
-  // Leaderboard (friendly mode after scoring:complete)
+  // Leaderboard (competitive mode after scoring:complete)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null);
 
   // Fetch all book+entry data on mount
@@ -116,27 +105,6 @@ export function PlayerRevealScreen({
   const isMyBook = currentBook?.ownerPlayerId === playerId;
   const isMyEntry = currentEntry?.authorPlayerId === playerId;
 
-  // Voting: show panel when all entries of the current book have been revealed
-  const isLastEntryOfBook =
-    currentBook !== undefined &&
-    entryIndex === currentBook.entries.length - 1;
-
-  // Entries in current book split by type, excluding player's own entries
-  const votableDrawings = currentBook?.entries.filter(
-    (e) => e.type === "drawing" && e.authorPlayerId !== playerId
-  ) ?? [];
-  const votableGuesses = currentBook?.entries.filter(
-    (e) => e.type === "guess" && e.authorPlayerId !== playerId
-  ) ?? [];
-
-  const currentBookVote = voteSelections[currentBook?.id ?? ""] ?? {};
-  const hasVotedCurrentBook = currentBook && submittedBookIds.has(currentBook.id);
-  const showVotingPanel =
-    scoringMode === "friendly" &&
-    isLastEntryOfBook &&
-    !hasVotedCurrentBook &&
-    (votableDrawings.length > 0 || votableGuesses.length > 0);
-
   async function handleAdvance() {
     if (advancing) return;
     setAdvancing(true);
@@ -145,44 +113,6 @@ export function PlayerRevealScreen({
     } finally {
       setAdvancing(false);
     }
-  }
-
-  async function submitBookVotes(bookId: string) {
-    if (submittingBookId) return;
-    setSubmittingBookId(bookId);
-    const selection = voteSelections[bookId] ?? {};
-    const votePromises: Promise<Response>[] = [];
-
-    if (selection.sketchEntryId) {
-      votePromises.push(
-        debugFetch("/api/votes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bookId,
-            entryId: selection.sketchEntryId,
-            voteType: "favorite_sketch",
-          }),
-        })
-      );
-    }
-    if (selection.guessEntryId) {
-      votePromises.push(
-        debugFetch("/api/votes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bookId,
-            entryId: selection.guessEntryId,
-            voteType: "favorite_guess",
-          }),
-        })
-      );
-    }
-
-    await Promise.allSettled(votePromises);
-    setSubmittedBookIds((prev) => new Set([...prev, bookId]));
-    setSubmittingBookId(null);
   }
 
   const replayStrokes = useMemo<Stroke[]>(() => {
@@ -244,55 +174,15 @@ export function PlayerRevealScreen({
     );
   }
 
-  // After reveal ends — friendly mode: wait for leaderboard
+  // After reveal ends — friendly mode: simple wrap screen
   if (finished && scoringMode === "friendly") {
-    const allBooksVoted = books.every((b) => submittedBookIds.has(b.id));
     return (
-      <main className="flex-1 px-6 pt-12 pb-32 max-w-lg mx-auto w-full space-y-8">
-        <section className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-secondary-container rounded-full sketch-shadow-secondary mb-2 transform rotate-2">
-            <span className="text-5xl">🎉</span>
-          </div>
-          <h2 className="font-headline font-extrabold text-4xl text-on-surface tracking-tight">Reveal Complete!</h2>
-          
-          {!allBooksVoted && books.length > 0 && (
-            <div className="bg-tertiary-container p-4 rounded-xl shadow-inner mt-4 border border-tertiary/20">
-              <p className="font-label text-xs uppercase tracking-widest text-on-tertiary-container font-bold">
-                Action Required
-              </p>
-              <p className="font-body text-on-surface-variant mt-1 text-sm font-medium">Cast your remaining votes below.</p>
-            </div>
-          )}
-        </section>
-
-        {!allBooksVoted && books.length > 0 && (
-          <div className="space-y-8">
-            {books.filter((b) => !submittedBookIds.has(b.id)).map((book) => (
-              <VotePanel
-                key={book.id}
-                book={book}
-                playerId={playerId}
-                selection={voteSelections[book.id] ?? {}}
-                onSelect={(field, entryId) =>
-                  setVoteSelections((prev) => ({
-                    ...prev,
-                    [book.id]: { ...prev[book.id], [field]: entryId },
-                  }))
-                }
-                onSubmit={() => submitBookVotes(book.id)}
-                submitting={submittingBookId === book.id}
-              />
-            ))}
-          </div>
-        )}
-
-        {allBooksVoted && (
-          <div className="bg-surface-container-lowest p-8 rounded-xl sketch-shadow border border-outline-variant/10 text-center transform -rotate-1">
-            <span className="material-symbols-outlined text-4xl text-outline-variant animate-spin block mb-4" style={{animationDuration: "4s"}}>settings</span>
-            <p className="font-label font-bold text-on-surface uppercase tracking-widest text-sm">Waiting for Host</p>
-            <p className="font-body text-on-surface-variant mt-2 text-sm font-medium">Sit tight while the host unveils the final leaderboard.</p>
-          </div>
-        )}
+      <main className="flex-1 px-6 pt-12 pb-32 max-w-lg mx-auto w-full flex flex-col items-center justify-center gap-6 text-center">
+        <div className="w-24 h-24 rounded-full flex items-center justify-center bg-tertiary-container border-4 border-tertiary sketch-shadow-tertiary mx-auto">
+          <span className="text-4xl">🎉</span>
+        </div>
+        <h2 className="font-headline text-4xl font-extrabold text-on-surface">That&apos;s a Wrap!</h2>
+        <p className="text-on-surface-variant font-medium text-lg">Hope you had a blast!</p>
       </main>
     );
   }
@@ -428,126 +318,6 @@ export function PlayerRevealScreen({
         </section>
       )}
 
-      {/* Per-book voting panel (friendly mode, last entry visible, not yet voted) */}
-      {showVotingPanel && (
-        <VotePanel
-          book={currentBook}
-          playerId={playerId}
-          selection={currentBookVote}
-          onSelect={(field, entryId) =>
-            setVoteSelections((prev) => ({
-              ...prev,
-              [currentBook.id]: { ...prev[currentBook.id], [field]: entryId },
-            }))
-          }
-          onSubmit={() => submitBookVotes(currentBook.id)}
-          submitting={submittingBookId === currentBook.id}
-        />
-      )}
     </main>
-  );
-}
-
-// ── VotePanel ──────────────────────────────────────────────────────────────────
-
-interface VotePanelProps {
-  book: Book;
-  playerId: string;
-  selection: BookVoteSelection;
-  onSelect: (field: "sketchEntryId" | "guessEntryId", entryId: string) => void;
-  onSubmit: () => void;
-  submitting: boolean;
-}
-
-function VotePanel({ book, playerId, selection, onSelect, onSubmit, submitting }: VotePanelProps) {
-  const votableDrawings = book.entries.filter(
-    (e) => e.type === "drawing" && e.authorPlayerId !== playerId
-  );
-  const votableGuesses = book.entries.filter(
-    (e) => e.type === "guess" && e.authorPlayerId !== playerId
-  );
-
-  const canSubmit =
-    (votableDrawings.length === 0 || selection.sketchEntryId) &&
-    (votableGuesses.length === 0 || selection.guessEntryId);
-
-  return (
-    <div className="bg-tertiary-container rounded-xl p-6 mt-8 relative sketch-shadow transform rotate-[1deg] border border-tertiary/10">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-tertiary px-3 py-1 text-on-tertiary rounded shadow-inner transform -rotate-2">
-          <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>how_to_vote</span>
-        </div>
-        <h3 className="font-headline font-extrabold text-lg text-tertiary-dim uppercase tracking-tight">
-          Cast Your Votes!
-        </h3>
-      </div>
-
-      <div className="space-y-6">
-        {votableDrawings.length > 0 && (
-          <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/10 shadow-sm">
-            <p className="font-label text-xs font-bold text-outline-variant uppercase tracking-widest mb-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">palette</span>
-              Best Sketch
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {votableDrawings.map((entry) => (
-                <button
-                  key={entry.id}
-                  onClick={() => onSelect("sketchEntryId", entry.id)}
-                  className={`px-4 py-3 rounded-lg text-left transition-all font-body font-semibold text-sm ${
-                    selection.sketchEntryId === entry.id
-                      ? "bg-secondary-container text-on-secondary-container border-2 border-secondary sketch-shadow-secondary scale-[1.02]"
-                      : "bg-surface-container-high text-on-surface border-2 border-transparent hover:bg-surface-container-highest"
-                  }`}
-                >
-                  {entry.authorNickname}&apos;s drawing
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {votableGuesses.length > 0 && (
-          <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant/10 shadow-sm">
-            <p className="font-label text-xs font-bold text-outline-variant uppercase tracking-widest mb-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">psychology</span>
-              Best Guess
-            </p>
-            <div className="grid grid-cols-1 gap-2">
-              {votableGuesses.map((entry) => (
-                <button
-                  key={entry.id}
-                  onClick={() => onSelect("guessEntryId", entry.id)}
-                  className={`px-4 py-3 rounded-lg text-left transition-all font-body flex flex-col gap-1 ${
-                    selection.guessEntryId === entry.id
-                      ? "bg-secondary-container text-on-secondary-container border-2 border-secondary sketch-shadow-secondary scale-[1.02]"
-                      : "bg-surface-container-high text-on-surface border-2 border-transparent hover:bg-surface-container-highest"
-                  }`}
-                >
-                  <span className="font-headline font-bold text-lg italic tracking-tight">&ldquo;{entry.content}&rdquo;</span>
-                  <span className={`text-[10px] font-label font-bold uppercase tracking-widest ${selection.guessEntryId === entry.id ? 'opacity-80' : 'text-outline-variant'}`}>
-                    By {entry.authorNickname}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={onSubmit}
-          disabled={!canSubmit || submitting}
-          className="w-full py-4 rounded-xl font-headline text-lg font-extrabold transition-all uppercase tracking-wide flex items-center justify-center gap-2 disabled:opacity-40 disabled:scale-100 disabled:shadow-none hover:-translate-y-1 hover:shadow-lg active:scale-95 active:shadow-md
-            bg-on-tertiary-container text-tertiary-container shadow-[4px_4px_0px_0px_#433700]"
-        >
-          {submitting ? (
-            <span className="material-symbols-outlined animate-spin font-bold">autorenew</span>
-          ) : (
-            <span className="material-symbols-outlined font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
-          )}
-          {submitting ? "Locking it in..." : "Submit Votes"}
-        </button>
-      </div>
-    </div>
   );
 }
