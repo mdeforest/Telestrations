@@ -5,7 +5,7 @@ import Ably from "ably";
 import { getAblyClient } from "@/lib/realtime/client";
 import { channels } from "@/lib/realtime/channels";
 
-const ROUND_DURATION_SECONDS = 60;
+const ROUND_DURATION_SECONDS = 120;
 
 interface Player {
   id: string;
@@ -24,6 +24,7 @@ interface Props {
 interface DrawingStatus {
   timerStartedAt: string | null;
   currentPass: number;
+  passType: "drawing" | "guess";
   pendingNicknames: string[];
   disconnectedNicknames: string[];
 }
@@ -41,6 +42,7 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
   const [status, setStatus] = useState<DrawingStatus>({
     timerStartedAt: initialTimer,
     currentPass: 1,
+    passType: "drawing",
     pendingNicknames: [],
     disconnectedNicknames: [],
   });
@@ -64,7 +66,13 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
 
     // Refresh pending list when any entry is submitted or a pass advances
     const passCh = ably.channels.get(channels.roundPass(code));
-    const onPassAdvanced = () => { fetchStatus(); };
+    const onPassAdvanced = () => {
+      // Optimistically reset countdown so the host timer ticks from 0 immediately,
+      // without waiting for the network round-trip. fetchStatus() then overwrites
+      // with the authoritative server timestamp.
+      setStatus(prev => ({ ...prev, timerStartedAt: new Date().toISOString() }));
+      fetchStatus();
+    };
     const onEntrySubmitted = () => { fetchStatus(); };
     passCh.subscribe("pass-advanced", onPassAdvanced);
     passCh.subscribe("entry-submitted", onEntrySubmitted);
@@ -130,7 +138,9 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
         <div className="flex items-center gap-6">
           <span className="text-3xl font-black text-primary truncate max-w-[200px] md:max-w-none">The Animated Sketchpad</span>
           <div className="bg-surface-variant h-8 w-1 mx-2 hidden md:block"></div>
-          <h1 className="text-on-surface font-headline font-extrabold truncate hidden md:block">Round {status.currentPass}: Drawing Phase</h1>
+          <h1 className="text-on-surface font-headline font-extrabold truncate hidden md:block">
+            Round {status.currentPass}: {status.passType === "guess" ? "Guessing Phase" : "Drawing Phase"}
+          </h1>
         </div>
         <div className="flex items-center gap-6">
           {/* Timer Component */}
@@ -192,6 +202,16 @@ export function HostDrawingScreen({ code, roundId, timerStartedAt: initialTimer,
                   <div className="bg-primary-container text-on-primary-container py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm">
                     <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                     <span className="font-label font-bold uppercase tracking-wider text-xs">Submitted!</span>
+                  </div>
+                ) : status.passType === "guess" && timerDone ? (
+                  <div className="bg-error-container text-on-error-container py-3 px-4 rounded-xl flex items-center justify-center gap-3 border border-error animate-pulse">
+                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>timer_off</span>
+                    <span className="font-label font-bold uppercase tracking-wider text-xs">Finish up now!</span>
+                  </div>
+                ) : status.passType === "guess" ? (
+                  <div className="bg-surface-container-high text-on-surface-variant py-3 px-4 rounded-xl flex items-center justify-center gap-3 border border-outline-variant/20">
+                    <span className="material-symbols-outlined animate-bounce text-sm">psychology</span>
+                    <span className="font-label font-bold uppercase tracking-wider text-xs">Guessing...</span>
                   </div>
                 ) : (
                   <div className="bg-surface-container-high text-on-surface-variant py-3 px-4 rounded-xl flex items-center justify-center gap-3 border border-outline-variant/20">

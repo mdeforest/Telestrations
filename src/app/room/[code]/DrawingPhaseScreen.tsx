@@ -8,7 +8,7 @@ import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 import { PlayerWaitingScreen } from "./PlayerWaitingScreen";
 
-const ROUND_DURATION_SECONDS = 60;
+const ROUND_DURATION_SECONDS = 120;
 
 interface Props {
   code: string;
@@ -32,6 +32,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
   const [secondsLeft, setSecondsLeft] = useState<number>(ROUND_DURATION_SECONDS);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoSubmit, setAutoSubmit] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submittedPlayerIds, setSubmittedPlayerIds] = useState<string[]>([]);
   // bookId, passNumber, and the word to draw are loaded from the my-entry endpoint
@@ -50,6 +51,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
       const elapsed = Math.floor((Date.now() - startMs) / 1000);
       const remaining = Math.max(0, ROUND_DURATION_SECONDS - elapsed);
       setSecondsLeft(remaining);
+      if (remaining === 0) setAutoSubmit(true);
     }
 
     tick();
@@ -160,6 +162,7 @@ export function DrawingPhaseScreen({ code, roundId, playerId, timerStartedAt, pl
       <DrawingCanvas
         onSubmit={handleSubmit}
         disabled={submitting || !entryInfo}
+        triggerAutoSubmit={autoSubmit && !!entryInfo}
       />
     </div>
   );

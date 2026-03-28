@@ -8,7 +8,7 @@ import { channels } from "@/lib/realtime/channels";
 import { DrawingCanvas, type Stroke } from "@/components/DrawingCanvas";
 import { GuessingWaitingScreen } from "./GuessingWaitingScreen";
 
-const ROUND_DURATION_SECONDS = 60;
+const ROUND_DURATION_SECONDS = 120;
 
 interface Props {
   code: string;
@@ -142,6 +142,7 @@ export function GuessingPhaseScreen({
   const secs = secondsLeft % 60;
   const timeLabel = `${minutes}:${String(secs).padStart(2, "0")}`;
   const timerUrgent = secondsLeft <= 10;
+  const timeExpired = secondsLeft === 0 && !submitted;
 
   if (submitted) {
     return <GuessingWaitingScreen players={players} localPlayerId={playerId} submittedPlayerIds={submittedPlayerIds} />;
@@ -160,7 +161,10 @@ export function GuessingPhaseScreen({
       {/* Timer Element */}
       <div className={`flex items-center gap-3 px-6 py-2 rounded-full wonky-input border-2 transition-colors ${timerUrgent ? "bg-error-container text-on-error-container border-error shadow-[2px_2px_0px_#9f0519]" : "bg-tertiary-container text-on-tertiary-container border-transparent shadow-[2px_2px_0px_#594a00]"}`}>
         <span className="material-symbols-outlined">timer</span>
-        <span className={`font-label font-bold text-xl tracking-widest ${timerUrgent ? "animate-pulse" : ""}`}>
+        <span
+          aria-label="seconds remaining"
+          className={`font-label font-bold text-xl tracking-widest ${timerUrgent ? "animate-pulse" : ""}`}
+        >
           {timeLabel}
         </span>
       </div>
@@ -173,6 +177,13 @@ export function GuessingPhaseScreen({
       />
 
       {error && <p className="text-sm text-red-600 font-bold bg-error-container px-4 py-2 rounded-lg">{error}</p>}
+
+      {timeExpired && (
+        <div className="w-full max-w-md flex items-center gap-3 px-5 py-4 rounded-xl bg-error-container text-on-error-container border-2 border-error animate-pulse">
+          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>timer_off</span>
+          <span className="font-headline font-bold text-lg">Time&apos;s up! Submit your guess now.</span>
+        </div>
+      )}
 
       {/* Input Section */}
       <div className="w-full max-w-md space-y-6">

@@ -129,6 +129,7 @@ export function LobbyPlayerList({
       setPassType(null);
       setIncomingDrawing(null);
       setPassVersion((v) => v + 1);
+      setTimerStartedAt(new Date().toISOString());
     };
     passCh.subscribe("pass-advanced", onPassAdvanced);
 
@@ -252,7 +253,7 @@ export function LobbyPlayerList({
                 
                 // Varied tilt/rotation for players to match living doodle
                 const rotation = index % 3 === 0 ? "transform -rotate-1" : index % 3 === 1 ? "transform rotate-2" : "transform -rotate-2";
-                const bgRound = index % 3 === 0 ? "bg-secondary text-on-secondary sketch-shadow-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container" : "bg-tertiary-container text-on-tertiary-container";
+                const bgRound = index % 3 === 0 ? "bg-secondary-container text-on-secondary-container sketch-shadow-secondary" : index % 3 === 1 ? "bg-primary-container text-on-primary-container" : "bg-tertiary-container text-on-tertiary-container";
                 const cardBg = index % 2 === 0 ? "bg-surface-container-lowest" : "bg-surface-container-low";
                 
                 return (
