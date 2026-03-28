@@ -121,8 +121,8 @@ export function createRoomService(db: any) {
     hostPlayerId: string,
     config: { numRounds: number; scoringMode: "friendly" | "competitive" }
   ): Promise<{ id: string; code: string; status: string }> {
-    if (config.numRounds < 3 || config.numRounds > 8) {
-      throw new InvalidConfigError("numRounds must be between 3 and 8");
+    if (config.numRounds < 1 || config.numRounds > 8) {
+      throw new InvalidConfigError("numRounds must be between 1 and 8");
     }
 
     const [room] = await db

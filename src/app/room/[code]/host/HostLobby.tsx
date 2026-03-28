@@ -19,6 +19,7 @@ interface Props {
   code: string;
   initialPlayers: Player[];
   hostPlayerId: string;
+  initialNumRounds?: number;
   initialStatus?: string;
   initialSelectedCount?: number;
   initialRoundId?: string;
@@ -32,6 +33,7 @@ export function HostLobby({
   code,
   initialPlayers,
   hostPlayerId,
+  initialNumRounds = 3,
   initialStatus = "lobby",
   initialSelectedCount = 0,
   initialRoundId,
@@ -48,7 +50,7 @@ export function HostLobby({
   const [revealEntryIndex, setRevealEntryIndex] = useState(initialRevealEntryIndex);
   const [phoneConnected, setPhoneConnected] = useState(false);
   const [urlInfo, setUrlInfo] = useState({ connectUrl: "", playerJoinUrl: "", isLocalhost: false });
-  const numRounds = 3;
+  const numRounds = initialNumRounds;
   const scoringMode = initialScoringMode;
 
   // Compute URLs client-side so they reflect window.location (the real IP

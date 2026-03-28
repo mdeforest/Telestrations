@@ -43,6 +43,7 @@ const ACTION_PHASES: Record<DebugAction, string[]> = {
 
 export function DebugDashboard() {
   const [playerCount, setPlayerCount] = useState(4);
+  const [numRounds, setNumRounds] = useState(3);
   const [session, setSession] = useState<SessionState | null>(null);
   const [creating, setCreating] = useState(false);
   const [actionLoading, setActionLoading] = useState<DebugAction | null>(null);
@@ -70,7 +71,7 @@ export function DebugDashboard() {
     const res = await fetch("/api/debug/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerCount }),
+      body: JSON.stringify({ playerCount, numRounds }),
     });
     const data = (await res.json()) as { sessionId?: string; roomCode?: string; players?: DebugPlayer[]; error?: string };
     if (!res.ok) {
@@ -122,6 +123,20 @@ export function DebugDashboard() {
               className="ml-2 border rounded px-2 py-1 bg-white"
             >
               {[4, 5, 6].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm font-medium">
+            Rounds:
+            <select
+              value={numRounds}
+              onChange={(e) => setNumRounds(Number(e.target.value))}
+              className="ml-2 border rounded px-2 py-1 bg-white"
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>
