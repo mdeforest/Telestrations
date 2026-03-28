@@ -40,7 +40,7 @@ export function HostLobby({
   initialTimerStartedAt = null,
   initialRevealBookIndex = 0,
   initialRevealEntryIndex = 0,
-  initialScoringMode = "friendly",
+  initialScoringMode = "competitive",
 }: Props) {
   const [playerList, setPlayerList] = useState<Player[]>(initialPlayers);
   const [status, setStatus] = useState(initialStatus);

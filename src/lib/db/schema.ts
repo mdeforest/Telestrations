@@ -56,7 +56,7 @@ export const rooms = pgTable(
     hostPlayerId: uuid("host_player_id"),
     numRounds: integer("num_rounds").notNull().default(3),
     currentRound: integer("current_round").notNull().default(0),
-    scoringMode: scoringModeEnum("scoring_mode").notNull().default("friendly"),
+    scoringMode: scoringModeEnum("scoring_mode").notNull().default("competitive"),
     revealBookIndex: integer("reveal_book_index").notNull().default(0),
     revealEntryIndex: integer("reveal_entry_index").notNull().default(0),
     hostPhoneConnectedAt: timestamp("host_phone_connected_at", { withTimezone: true }),
