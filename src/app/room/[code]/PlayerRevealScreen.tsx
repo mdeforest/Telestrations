@@ -132,7 +132,7 @@ export function PlayerRevealScreen({
   }
 
   // Leaderboard screen (after host tallies)
-  if (leaderboard) {
+  if (leaderboard && scoringMode === "competitive") {
     return (
       <main className="flex-1 px-6 pt-12 pb-32 max-w-lg mx-auto w-full space-y-8">
         <section className="text-center space-y-4 transform -rotate-1">
